@@ -19,8 +19,8 @@ struct Module {
     }
 
     void dump() const {
-        for ( auto it = begin(); it != end(); ++it ) 
-	   putchar( *it );
+        for ( auto it = begin(); it != end(); ++it )
+	        putchar( *it );
     }
 
     MBModule *_tag;
@@ -32,36 +32,27 @@ void print_tags( unsigned long addr ) {
 
     while ( tag->type != MULTIBOOT_TAG_TYPE_END ) {
 		switch ( tag->type ) {
-			case MULTIBOOT_TAG_TYPE_CMDLINE:
-            	printf ("Command line = %s\n", reinterpret_cast< MBString* >( tag )->string );
-                break;
-			case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME:
-            	printf ("Boot loader name = %s\n", reinterpret_cast< MBString* >( tag )->string );
+			case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
+                auto m = reinterpret_cast< MBString* >( tag );
+            	printf ("Boot loader name = %s\n", m->string );
 				break;
+            }
             case MULTIBOOT_TAG_TYPE_MODULE: {
-                auto mod = reinterpret_cast< MBModule* >( tag );
-            	printf ("Module at 0x%x-0x%x. Command line %s\n",
-                		reinterpret_cast< MBModule* >( tag )->mod_start,
-                		reinterpret_cast< MBModule* >( tag )->mod_end,
-                		reinterpret_cast< MBModule* >( tag )->cmdline);
-                Module( mod ).dump();
+                auto m = reinterpret_cast< MBModule* >( tag );
+            	printf ("Module at 0x%x-0x%x. Content:\n", m->mod_start, m->mod_end);
+                Module( m ).dump();
+            	printf ("End of module.\n\n");
                 break;
             }
-			case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
-            	printf ("mem_lower = %uKB, mem_upper = %uKB\n",
-                   reinterpret_cast< MBMemInfo* >( tag )->mem_lower,
-                   reinterpret_cast< MBMemInfo* >( tag )->mem_upper);
+			case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
+                auto m = reinterpret_cast< MBMemInfo* >( tag );
+            	printf ("mem_lower = %uKB, mem_upper = %uKB\n", m->mem_lower, m->mem_upper);
          		break;
-			case MULTIBOOT_TAG_TYPE_BOOTDEV:
-            	printf ("Boot device 0x%x,%u,%u\n",
-                         reinterpret_cast< MBBootDev* >( tag )->biosdev,
-                         reinterpret_cast< MBBootDev* >( tag )->slice,
-                         reinterpret_cast< MBBootDev* >( tag )->part);
-            	break;
+            }
 		}
 
         auto offset = ( tag->size + 7 ) & ~7;
-	tag = add_offset( tag, offset );
+	    tag = add_offset( tag, offset );
     }
     putchar('\n');
 }
@@ -86,20 +77,20 @@ void init_serial() {
 int serial_received() {
    return inb(PORT + 5) & 1;
 }
- 
+
 char read_serial() {
    while (serial_received() == 0);
- 
+
    return inb(PORT);
 }
 
 int is_transmit_empty() {
    return inb(PORT + 5) & 0x20;
 }
- 
+
 void write_serial(char a) {
    while (is_transmit_empty() == 0);
- 
+
    outb(PORT,a);
 }
 
@@ -118,11 +109,11 @@ void main( unsigned long magic, unsigned long addr )
     }
 
     print_tags( addr );
-    
+
     init_serial();
-    
-    printf( "serial:\n" );
-    
+
+    printf( "You can write now:\n" );
+
     while (true) {
         putchar( read_serial() );
     }
