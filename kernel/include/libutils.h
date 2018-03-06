@@ -1,7 +1,7 @@
 #pragma once
 
-//#include <type_traits>
-//#include <cstddef>
+#include <type_traits>
+#include <cstddef>
 //#include <cstring>
 
 extern "C" {
@@ -152,7 +152,7 @@ void printf (const char *format, ...)
 
 }
 
-/*template < typename dst, typename src >
+template < typename dst, typename src >
 struct adopt_const {
     using type = std::conditional_t< std::is_const_v< src >, std::add_const_t< dst >, dst >;
 };
@@ -175,9 +175,9 @@ struct adopt_cv {
 
 template < typename dst, typename src >
 using adopt_cv_t = typename adopt_cv< dst, src >::type;
-*/
 
 template < typename T>
 inline constexpr T* add_offset( T* ptr, unsigned long offset ) noexcept {
-    return reinterpret_cast< T* >( reinterpret_cast< unsigned char* >( ptr ) + offset );
+    using byte_type = adopt_cv_t< std::byte, T >;
+    return reinterpret_cast< T* >( reinterpret_cast< byte_type* >( ptr ) + offset );
 }

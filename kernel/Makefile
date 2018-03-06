@@ -1,7 +1,7 @@
 LD = gcc
 CC = clang
 
-CFLAGS = -ffreestanding -nostdlib -std=c++11 -static -fno-stack-protector -m32 -fno-PIC
+CFLAGS = -ffreestanding -nostdlib -std=c++17 -static -fno-stack-protector -m32 -fno-PIC
 LDFLAGS = -Wl,-melf_i386
 
 GRUB ?= $(HOME)/prog/grub/bin/
