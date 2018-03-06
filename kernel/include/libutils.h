@@ -131,9 +131,6 @@ void printf (const char *format, ...)
 
 		 		case 's':
 		   			p = *arg++;
-		   			if (! p)
-			 			p = "(null)";
-
 		 		string:
 		   			for (p2 = p; *p2; p2++);
 		   			for (; p2 < p + pad; p2++)
