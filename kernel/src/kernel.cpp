@@ -1,5 +1,6 @@
 #include "multiboot2.h"
 #include "libutils.h"
+#include "mm.h"
 
 using MBTag = struct multiboot_tag;
 using MBString = struct multiboot_tag_string;
@@ -111,6 +112,7 @@ void main( unsigned long magic, unsigned long addr )
     print_tags( addr );
 
     init_serial();
+    init_page_dir();
 
     printf( "You can write now:\n" );
 
