@@ -1,6 +1,6 @@
 #include "multiboot2.h"
 #include "libutils.h"
-#include "mm.h"
+#include "pgtable.h"
 
 using MBTag = struct multiboot_tag;
 using MBString = struct multiboot_tag_string;
