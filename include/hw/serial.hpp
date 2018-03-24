@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <hw/ioport.hpp>
 
 namespace hw {
@@ -29,12 +31,15 @@ namespace hw {
         static void init( uint16_t port );
 
         static void eot();
+
     private:
+
         Serial( int port );
 
         char newline = '\r';
 
         int _port{ PORTS[0] };
     };
+
 
 } // namespace hw

@@ -30,7 +30,7 @@ multiboot_entry:
 
         pushl   %ebx /* multiboot information structure */
         pushl   %eax /* multiboot magic value */
-        call    main /* let's C */
+        call    boot /* let's C */
 
         //pushl   $halt_message
         //call    puts

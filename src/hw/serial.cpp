@@ -45,3 +45,8 @@ void Serial::eot() {
 	outb( PORTS[0], 0x4 );
 }
 
+/*void Serial::print( const char* str ) {
+    for ( size_t i = 0; str[ i ]; ++i )
+        this->write( str[ i ] );
+}*/
+

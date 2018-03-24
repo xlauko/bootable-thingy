@@ -1,27 +1,43 @@
 GRUB ?= $(HOME)/prog/grub/bin/
 MKRESCUE = env PATH=$$PATH:$(GRUB) grub-mkrescue
 
-TARGETS = kernel
+TARGETS = os
+
+SRC = $(wildcard src/**/*.cpp)
+ASM = $(wildcard src/**/*.S)
+INCLUDE = $(wildcard include/**/*.hpp) $(wildcard include/**/*.h)
 
 .PHONY: $(TARGETS)
 
+LD = g++
+CC = clang
+
+CFLAGS = -ffreestanding -nostdlib -std=c++17 -static -fno-stack-protector -m32 -fno-PIC
+LDFLAGS = -Wl,-melf_i386
+
 all: $(TARGETS)
 
-kernel:
-	cd ./kernel ; make kernel
+os: $(SRC) $(ASM) $(INCLUDE)
+	$(LD) -o $@.out -Iinclude -T linkscript $(CFLAGS) $(LDFLAGS) $(SRC) $(ASM)
 
-boot.img: kernel
+%.o: %.S
+	$(CC) -o %$< -c $(CFLAGS) $@
+
+%.o: %.cpp
+	$(CC) -o %$< -Iinclude -c $(CFLAGS) $@
+
+os.img: os
 	mkdir -p _boot/boot/grub
-	cp kernel/kernel.out _boot
-	cp kernel/grub.cfg _boot/boot/grub/
-	cp -r kernel/* _boot
+	cp os.out _boot
+	cp boot/grub.cfg _boot/boot/grub/
+	cp -r src/* _boot
 	$(MKRESCUE) -o $@ _boot
 	rm -rf _boot
 
-test: boot.img
-	qemu-system-i386 -serial stdio -cdrom boot.img
+test: os.img
+	qemu-system-i386 -serial stdio -cdrom os.img
 
 clean:
 	rm -f *.o
-	rm boot.img
-	cd ./kernel; make clean
+	rm -f os.out
+	rm -f os.img
