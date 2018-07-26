@@ -1,14 +1,14 @@
 GRUB ?= $(HOME)/prog/grub/bin/
 MKRESCUE = env PATH=$$PATH:$(GRUB) grub-mkrescue
 
-TARGETS = kernel
+TARGETS = kernel boot.img
 
 .PHONY: $(TARGETS)
 
 all: $(TARGETS)
 
 kernel:
-	cd ./kernel ; make kernel
+	$(MAKE) -C kernel
 
 boot.img: kernel
 	mkdir -p _boot/boot/grub
@@ -22,6 +22,5 @@ test: boot.img
 	qemu-system-i386 -serial stdio -cdrom boot.img
 
 clean:
-	rm -f *.o
-	rm boot.img
-	cd ./kernel; make clean
+	rm -f boot.img
+	$(MAKE) -C kernel clean
