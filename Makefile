@@ -46,7 +46,7 @@ $(LIBC):
 	$(CC) -o $@ -Iinclude -c $(CFLAGS) $<
 
 clean:
-	rm -f *.o
+	rm -f src/**/*.o
 	rm -f $(KERNEL)
 	rm -f $(ISO)
 	$(MAKE) -C lib/pdclib clean
