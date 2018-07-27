@@ -1,7 +1,7 @@
 .PHONY: kernel clean
 
-CC  ?= clang
-CXX ?= clang++
+CC  = clang
+CXX = clang++
 
 INCLUDE_DIR = includes internals opt/nothread
 SRC = $(wildcard functions/*/*.c) $(wildcard opt/nothread/*.c)

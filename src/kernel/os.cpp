@@ -6,6 +6,7 @@ using namespace kernel::dev;
 #include <multiboot2.h>
 #include <libutils.h>
 
+#include <stdio.h>
 /*using MBTag = struct multiboot_tag;
 using MBString = struct multiboot_tag_string;
 using MBModule = struct multiboot_tag_module;
@@ -70,6 +71,7 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     init_devices( &ser, &kvga );
 
+    printf( "test" );
     if ( magic != MULTIBOOT2_BOOTLOADER_MAGIC ) {
         kvga << "invalid magic number :-(";
         return;

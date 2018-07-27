@@ -4,44 +4,46 @@ MKRESCUE = env PATH=$$PATH:$(GRUB) grub-mkrescue
 ISO = thingy.img
 KERNEL := thingy.bin
 $(KERNEL): PLATFORM = kernel
-
+$(KERNEL):
 LIBC = lib/pdclib/kernel_pdclib.a
 
-TARGETS = $(KERNEL) $(ISO) $(LIBC)
+TARGETS = $(KERNEL) $(ISO) $(LIBC) clean
 
-.PHONY: $(TARGETS)
+.PHONY: $(TARGETS) all
 
 CPP = $(wildcard src/**/*.cpp)
 ASM = $(wildcard src/**/*.S)
 
-LD = gcc
-CC = clang
+OBJ := $(CPP:.cpp=.o) $(ASM:.S=.o)
+
+LD  = gcc
+CC  = clang
+CXX = clang++
 
 LDFLAGS = -Wl,-melf_i386
 INCLUDE = lib/pdclib/includes lib/pdclib/internals lib/pdclib/opt/nothread	\
-	    lib/pdclib/platform/$(PLATFORM)/includes							\
-	    lib/pdclib/platform/$(PLATFORM)/internals							\
-	    include
+	      lib/pdclib/platform/$(PLATFORM)/includes							\
+	      lib/pdclib/platform/$(PLATFORM)/internals							\
+	      include
 
 FLAGS = $(foreach i, $(INCLUDE), -I$i)
 
 CFLAGS += -std=c++17 -ffreestanding -nostdlib -static -fno-stack-protector -m32 \
 		  -fno-PIC -fno-rtti -fno-exceptions $(FLAGS) -D_PDCLIB_BUILD -g
 
-
 all: $(TARGETS)
 
-$(KERNEL): $(CPP) $(ASM) $(LIBC)
-	$(LD) -o $@ -T linkscript $(CFLAGS) $(LDFLAGS) $(CPP) $(ASM) $(LIBC)
+$(KERNEL): $(OBJ) $(LIBC)
+	$(LD) -o $@ -n -T linkscript $(CFLAGS) -O2 -lgcc $(LDFLAGS) $(OBJ) $(LIBC)
 
 $(LIBC):
 	$(MAKE) -C lib/pdclib kernel
 
 %.o: %.S
-	$(CC) -o $< -c $(CFLAGS) $@
+	$(CC) -o $@ -c $(CFLAGS) $<
 
 %.o: %.cpp
-	$(CC) -o $< -Iinclude -c $(CFLAGS) $@
+	$(CC) -o $@ -Iinclude -c $(CFLAGS) $<
 
 clean:
 	rm -f *.o
