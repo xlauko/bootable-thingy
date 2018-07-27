@@ -13,18 +13,20 @@ extern "C" void _PDCLIB_Exit( int status ) {
     asm volatile ("hlt");
 }
 
-extern "C" void free( void* ) { }
+extern "C" void free( void* ) noexcept { }
 
 static bool readf( _PDCLIB_fd_t self, void * buff, size_t length, size_t * numBytesRead ) {
-    /*auto indev = reinterpret_cast< masys::dev::CharacterInput * >( self.pointer );
+    auto in = static_cast< kernel::dev::Serial * >( self.pointer );
     auto buf = reinterpret_cast< char * >( buff );
-    int read = 0;
-    unsigned char c;
-    while ( read < length && indev->getch( c ) == masys::Status::SUCCESS ) {
-        ++read;
-        *buf++ = c;
+
+    int idx = 0;
+    while ( idx < length ) {
+        char c = in->read();
+        buf[ idx ] = c;
+        idx++;
     }
-    *numBytesRead = read;*/
+
+    *numBytesRead = idx;
     return true;
 }
 

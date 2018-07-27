@@ -1,15 +1,12 @@
 #pragma once
 
+#include <kernel/utils.hpp>
+
 #include <type_traits>
 #include <cstdint>
 #include <stddef.h>
 
 namespace kernel::dev {
-
-    enum class Status {
-        success,
-        failure
-    };
 
     struct Serial {
         enum class Port : uint16_t {

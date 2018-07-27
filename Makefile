@@ -4,7 +4,7 @@ MKRESCUE = env PATH=$$PATH:$(GRUB) grub-mkrescue
 ISO = thingy.img
 KERNEL := thingy.bin
 $(KERNEL): PLATFORM = kernel
-$(KERNEL):
+
 LIBC = lib/pdclib/kernel_pdclib.a
 
 TARGETS = $(KERNEL) $(ISO) $(LIBC) clean
@@ -29,7 +29,7 @@ INCLUDE = lib/pdclib/includes lib/pdclib/internals lib/pdclib/opt/nothread	\
 FLAGS = $(foreach i, $(INCLUDE), -I$i)
 
 CFLAGS += -std=c++17 -ffreestanding -nostdlib -static -fno-stack-protector -m32 \
-		  -fno-PIC -fno-rtti -fno-exceptions $(FLAGS) -D_PDCLIB_BUILD -g
+		  -fno-PIC -fno-pie -fno-rtti -fno-exceptions $(FLAGS) -D_PDCLIB_BUILD -g -mno-sse
 
 all: $(TARGETS)
 
@@ -61,3 +61,7 @@ $(ISO): $(KERNEL)
 
 test: $(ISO)
 	qemu-system-i386 -serial stdio -cdrom $(ISO)
+
+debug: $(ISO)
+	qemu-system-i386 -S -s -serial mon:stdio -cdrom $(ISO)
+

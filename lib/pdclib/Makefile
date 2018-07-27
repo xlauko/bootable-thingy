@@ -3,14 +3,6 @@
 CC  = clang
 CXX = clang++
 
-INCLUDE_DIR = includes internals opt/nothread
-SRC = $(wildcard functions/*/*.c) $(wildcard opt/nothread/*.c)
-
-FLAGS = -m32 -ffreestanding -nostdlib -static -fno-stack-protector -fno-PIC -fno-pie -D_PDCLIB_BUILD $(INCLUDES) -g
-
-CFLAGS += $(FLAGS) -std=c11
-CXXFLAGS += $(FLAGS) -std=c++17 -fno-rtti -fno-exceptions
-
 PLATFORM = kernel
 
 KERNEL_INCLUDE_DIR = $(INCLUDE_DIR) platform/$(PLATFORM)/includes platform/$(PLATFORM)/internals
@@ -18,6 +10,15 @@ KERNEL_SRC = $(SRC) $(wildcard platform/$(PLATFORM)/functions/*/*.c)
 OBJ = $(KERNEL_SRC:.c=.o)
 KERNEL_OBJ = $(addprefix build/kernel/, $(OBJ))
 KERNEL_INCLUDES = $(foreach i, $(KERNEL_INCLUDE_DIR), -I$i)
+
+INCLUDE_DIR = includes internals opt/nothread
+SRC = $(wildcard functions/*/*.c) $(wildcard opt/nothread/*.c)
+
+FLAGS = -mno-sse -m32 -ffreestanding -nostdlib -static -fno-stack-protector -fno-PIC -fno-pie -D_PDCLIB_BUILD $(INCLUDES) -g
+
+CFLAGS += $(FLAGS) -std=c11
+CXXFLAGS += $(FLAGS) -std=c++17 -fno-rtti -fno-exceptions
+
 
 kernel: INCLUDES = $(KERNEL_INCLUDES)
 kernel: kernel_pdclib.a
