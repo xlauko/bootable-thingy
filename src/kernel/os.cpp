@@ -4,7 +4,6 @@ using namespace kernel;
 using namespace kernel::dev;
 
 #include <multiboot2.h>
-#include <libutils.h>
 
 #include <stdio.h>
 /*using MBTag = struct multiboot_tag;
