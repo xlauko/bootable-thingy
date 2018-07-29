@@ -57,3 +57,10 @@ __gdt_flush:
     jmp  $0x08, $(__flush)
 __flush:
     ret
+
+.global  __idt_flush
+.extern idt_ptr
+
+__idt_flush:
+    lidt [idt_ptr]
+    ret
