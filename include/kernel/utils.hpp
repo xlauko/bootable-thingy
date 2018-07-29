@@ -85,8 +85,6 @@ inline constexpr T* add_offset( T* ptr, unsigned long offset ) noexcept {
     return reinterpret_cast< T* >( reinterpret_cast< byte_type* >( ptr ) + offset );
 }
 
-/* Status */
-
 enum class Status {
     success,
     failure

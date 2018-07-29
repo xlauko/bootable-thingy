@@ -40,7 +40,7 @@ multiboot_entry:
         hlt
 
 halt_message:
-        .asciz  "halted"
+        .asciz  "thingy halted"
         .comm   stack, STACK_SIZE /* the stack */
 
 .global __gdt_flush, __flush
@@ -64,3 +64,67 @@ __flush:
 __idt_flush:
     lidt [idt_ptr]
     ret
+
+.macro ISR_NOERR num:req
+    .global isr\num
+    isr\num:
+		cli
+		pusha
+		mov $\num, %eax
+		push %eax
+		jmp __isr_default_handler_wrapper
+.endm
+
+.macro ISR_ERR num:req
+    .global isr\num
+    isr\num:
+        cli
+		pusha
+		mov $\num, %eax
+		push %eax
+        jmp __isr_default_handler_wrapper
+.endm
+
+ISR_NOERR 0
+ISR_NOERR 1
+ISR_NOERR 2
+ISR_NOERR 3
+ISR_NOERR 4
+ISR_NOERR 5
+ISR_NOERR 6
+ISR_NOERR 7
+ISR_ERR   8
+ISR_NOERR 9
+ISR_ERR   10
+ISR_ERR   11
+ISR_ERR   12
+ISR_ERR   13
+ISR_ERR   14
+ISR_NOERR 15
+ISR_NOERR 16
+ISR_NOERR 17
+ISR_NOERR 18
+ISR_NOERR 19
+ISR_NOERR 20
+ISR_NOERR 21
+ISR_NOERR 22
+ISR_NOERR 23
+ISR_NOERR 24
+ISR_NOERR 25
+ISR_NOERR 26
+ISR_NOERR 27
+ISR_NOERR 28
+ISR_NOERR 29
+ISR_NOERR 30
+ISR_NOERR 31
+
+.extern isr_default_handler
+.global __isr_default_handler_wrapper
+__isr_default_handler_wrapper:
+	call isr_default_handler
+	pop %eax
+
+	popa
+	sti
+	iret
+

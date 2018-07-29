@@ -95,4 +95,11 @@ namespace multiboot {
         uint32_t entry_size;
         uint32_t entry_version;
     };
+
+    struct layout {
+        uintptr_t mem_start;
+        uintptr_t mem_end;
+
+        static void init();
+    };
 }
