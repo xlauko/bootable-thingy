@@ -5,6 +5,8 @@ using namespace kernel::dev;
 
 #include <kernel/info.hpp>
 #include <kernel/utils.hpp>
+#include <kernel/mem.hpp>
+#include <kernel/dt.hpp>
 
 #include <multiboot2.h>
 #include <stdio.h>
@@ -18,6 +20,10 @@ namespace kernel {
 void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     Serial ser{ Serial::Port::one };
     VGA kvga{ video };
+
+    kernel::dt::init();
+
+    // mem::init();
 
     init_devices( &ser, &kvga );
     init_pdclib( &ser );

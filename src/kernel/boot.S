@@ -2,9 +2,10 @@
 #define STACK_SIZE      0x4000
 #include "multiboot2.h"
 
-        .text
+.text
 
-        .globl  start, _start
+.global  start, _start
+
 start:
 _start:
         jmp     multiboot_entry
@@ -30,12 +31,29 @@ multiboot_entry:
 
         pushl   %ebx /* multiboot information structure */
         pushl   %eax /* multiboot magic value */
+
+        cli          /* disable interrupts */
         call    main /* let's C */
 
-        #pushl   $halt_message
-        #call    puts
+        pushl   $halt_message
+        call    puts
         hlt
 
 halt_message:
         .asciz  "halted"
         .comm   stack, STACK_SIZE /* the stack */
+
+.global __gdt_flush, __flush
+.extern gdt_ptr
+
+__gdt_flush:
+    lgdt [gdt_ptr]
+    mov %ax, 0x10
+    mov %ds, %ax
+    mov %es, %ax
+    mov %fs, %ax
+    mov %gs, %ax
+    mov %ss, %ax
+    jmp  $0x08, $(__flush)
+__flush:
+    ret
