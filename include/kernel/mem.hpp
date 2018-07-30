@@ -43,11 +43,37 @@ namespace kernel::mem {
 		};
     } // namespace paging
 
-    namespace frame {
-        using paging::page_entry;
+    struct heap {
+        static constexpr uint32_t magic = 0x04206969;
 
-        void alloc( page_entry * page, bool kernel, bool writable );
-    } // namespace frame
+        static constexpr uint32_t magic2 = 0xDEADBEEF;
+
+        static constexpr size_t kernel_heap_size = 0xFFFFF;
+        static constexpr uint32_t kernel_heap_end = 0xFFFFDEAD;
+
+        struct header {
+            uint32_t magic;
+            bool free;
+            uint32_t size;
+            uint32_t magic2;
+        };
+
+        struct footer {
+            uint32_t magic;
+            uint32_t size;
+            uint32_t magic2;
+        };
+
+        static void init();
+    };
+
+    void * fmalloc( size_t size );
+    void * kmalloc_aligned( size_t size );
+
+    struct allocator {
+        void * alloc( size_t size );
+        void free( void * ptr );
+    };
 
     void init( size_t mem_size );
 

@@ -1,10 +1,11 @@
 #include <kernel/mem.hpp>
 #include <kernel/dt.hpp>
-#include <kernel/kalloc.hpp>
 #include <kernel/panic.hpp>
 
 #include <string.h>
 #include <stdio.h>
+
+extern "C" uint32_t kernel_end;
 
 namespace kernel::mem {
 
@@ -61,7 +62,7 @@ namespace kernel::mem {
         }
 
 		page_table * page_table::create() {
-            page_table * tab = reinterpret_cast< page_table * >( kalloc_aligned( sizeof( page_table ) ) );
+            page_table * tab = reinterpret_cast< page_table * >( kmalloc_aligned( sizeof( page_table ) ) );
 
             for ( size_t i = 0; i < page_table::size; i++ ) {
                 tab->pages[ i ].present = 0;
@@ -76,7 +77,7 @@ namespace kernel::mem {
         }
 
 		page_directory * page_directory::create() {
-            auto dir = reinterpret_cast< page_directory * >( kalloc_aligned( sizeof( page_directory ) ) );
+            auto dir = reinterpret_cast< page_directory * >( kmalloc_aligned( sizeof( page_directory ) ) );
 
             for ( size_t i = 0; i < page_directory::size; i++ )
                 dir->tables[ i ] = page_table::empty();
@@ -84,46 +85,6 @@ namespace kernel::mem {
             return dir;
         }
 	} // namespace paging
-
-
-    namespace frame {
-
-        size_t num_of_frames = 0;
-
-        size_t available() {
-            for ( size_t i = 0; i < index_from_bit( num_of_frames ); i++ ) {
-                if ( frames[i] != 0xFFFFFFFF ) {
-                    for ( int bit = 0; bit < 32; bit++ ) {
-                        auto test = 0x1 << bit;
-                        if ( !( frames[ i ] & test ) )
-                            return i * 0x20 + bit;
-                    }
-                }
-            }
-        }
-
-        void init( uintptr_t addr ) {
-            auto fr = addr / 0x1000;
-            auto idx = index_from_bit( fr );
-            auto off = offset_from_bit( fr );
-            frames[ idx ] |= ( 0x1 << off );
-        }
-
-        void alloc( page_entry * page, bool kernel = false, bool writable = false ) {
-            page->present = 1;
-            page->rw = writable;
-            page->user = !kernel;
-
-            if ( page->frame )
-                return;
-
-            size_t idx = available();
-
-            init( idx * 0x1000 );
-
-            page->frame = idx;
-        }
-    } // namespace frame
 
     void identity_map_page( page_directory * dir, uint32_t virt, uint32_t phys ) {
         short id = virt >> 22;
@@ -140,7 +101,52 @@ namespace kernel::mem {
         }
     }
 
+    void * allocator::alloc( size_t size ) {
+    }
+
+    void allocator::free( void * ptr ) {
+
+    }
+
+    heap::header * kheap = nullptr;
+
+    uintptr_t placement_addr = reinterpret_cast< uintptr_t >( &kernel_end );
+
+    void * fmalloc( size_t size ) {
+        auto res = reinterpret_cast< void * >( placement_addr );
+        memset( res, 0, size );
+        placement_addr += size;
+        return res;
+    }
+
+    void * kmalloc_aligned( size_t size ) {
+        placement_addr &= 0xFFFFF000;
+        placement_addr += 0x1000;
+
+        auto res = placement_addr;
+        placement_addr += size;
+        return reinterpret_cast< void * >( res );
+    }
+
+    void heap::init() {
+        kheap = reinterpret_cast< heap::header * >( fmalloc( heap::kernel_heap_size ) );
+        kheap->magic = heap::magic;
+        kheap->free = true;
+        kheap->size = heap::kernel_heap_size - sizeof( heap::header ) - sizeof( heap::footer );
+        kheap->magic2 = heap::magic2;
+
+        auto footer = reinterpret_cast< heap::footer * >( reinterpret_cast< uintptr_t >( kheap )
+                                                        + sizeof( heap::header ) + kheap->size );
+        footer->magic = heap::magic;
+        footer->size = heap::kernel_heap_end;
+        footer->magic2 = heap::magic2;
+
+        // TODO init user heap
+    }
+
     void init( size_t mem_size ) {
+        heap::init();
+
         paging::kernel_page_dir = page_directory::create();
 
         for ( size_t i = 0; i < 0xF0000000; i += 1024 * 4096 )
