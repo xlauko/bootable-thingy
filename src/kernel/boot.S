@@ -4,7 +4,7 @@
 
 .text
 
-.global  start, _start
+.global  start, _start, panic
 
 start:
 _start:
@@ -39,8 +39,17 @@ multiboot_entry:
         call    puts
         hlt
 
+panic:
+        pushl   $panic_message
+        call    puts
+        hlt
+
+panic_message:
+        .asciz  "Thingy panicked!"
+        .comm   stack, STACK_SIZE /* the stack */
+
 halt_message:
-        .asciz  "thingy halted"
+        .asciz  "Thingy halted"
         .comm   stack, STACK_SIZE /* the stack */
 
 .global __gdt_flush, __flush

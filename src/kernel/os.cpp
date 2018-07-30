@@ -5,6 +5,7 @@ using namespace kernel::dev;
 
 #include <kernel/info.hpp>
 #include <kernel/utils.hpp>
+#include <kernel/panic.hpp>
 #include <kernel/mem.hpp>
 #include <kernel/dt.hpp>
 
@@ -21,19 +22,22 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     Serial ser{ Serial::Port::one };
     VGA kvga{ video };
 
+    if ( multiboot::check( magic, addr ) == Status::failure )
+        panic();
+
+    auto info = multiboot::info( addr );
+
     kernel::dt::init();
 
-    // mem::init();
+    auto mem_info = info.mem();
+    mem::init( mem_info.upper + mem_info.lower );
 
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
-    puts( "Initialization finished." );
-    if ( multiboot::check( magic, addr ) == Status::failure )
-        return;
+    puts( "Initialization of Thingy finished." );
 
-    auto info = multiboot::info( addr );
-    info.print();
+    // info.print();
 
     kvga << "You can write now:\n";
     while ( true ) {

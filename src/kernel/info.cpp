@@ -1,4 +1,5 @@
 #include <kernel/info.hpp>
+#include <kernel/panic.hpp>
 
 namespace multiboot {
 
@@ -24,6 +25,26 @@ information_item * info::begin() const {
 information_item * next( information_item * item ) {
     return reinterpret_cast< information_item * >( ( ( reinterpret_cast< unsigned long >( item ) )
                                                        + item->size + 7 ) & 0xfffffff8UL );
+}
+
+memory_info info::mem() const {
+    memory_info mem_info;
+
+    basic_memory_information * bmi = nullptr;
+
+    for ( auto item = begin(); item->type != information_type::end; item = next( item ) )
+        if ( item->type == information_type::basic_memory )
+            bmi = reinterpret_cast< basic_memory_information * >( item );
+
+    if ( bmi == nullptr ) {
+        fprintf( stderr, "No memory information in multiboot tags." );
+        panic();
+    }
+
+    mem_info.lower = bmi->lower;
+    mem_info.upper = bmi->upper;
+
+    return mem_info;
 }
 
 void info::print() const {

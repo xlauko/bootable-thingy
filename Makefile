@@ -7,9 +7,9 @@ $(KERNEL): PLATFORM = kernel
 
 LIBC = lib/pdclib/kernel_pdclib.a
 
-TARGETS = $(KERNEL) $(ISO) $(LIBC) clean
+TARGETS = $(KERNEL) $(ISO) $(LIBC)
 
-.PHONY: $(TARGETS) all
+.PHONY: $(TARGETS) all clean
 
 CPP = $(wildcard src/**/*.cpp)
 ASM = $(wildcard src/**/*.S)

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <kernel/panic.hpp>
+
 using namespace kernel;
 
 /* GDT function */
@@ -177,7 +179,7 @@ extern "C" {
 	irq::handler isrs_handlers[ isrs::num_of_handlers ] = { nullptr };
 }
 
-namespace isrs {
+namespace kernel::isrs {
 	void install_handler( unsigned isrs, irq::handler handler ) {
 		isrs_handlers[ isrs ] = handler;
 	}
@@ -189,19 +191,20 @@ namespace isrs {
 
 extern "C" void isr_default_handler( unsigned int_no ) {
     if ( int_no == 8 ) {
-        // TODO STOP
+        fprintf( stderr, "%s\n", exception_messages[ int_no ] );
+		panic();
     }
 
     if ( int_no >= 32 ) {
-        // TODO STOP
-    }
+    	panic();
+	}
 
     if ( auto handler = isrs_handlers[ int_no ] ) {
         handler( int_no );
     } else {
         fprintf( stderr, "Unhandled exception: [%d] %s\n", int_no, exception_messages[ int_no ] );
-        // TODO PANIC
-    }
+    	panic();
+	}
 }
 
 namespace kernel::dt {

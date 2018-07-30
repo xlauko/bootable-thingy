@@ -37,6 +37,11 @@ namespace multiboot {
         struct information_list {};
     }
 
+    struct memory_info {
+        size_t lower;
+        size_t upper;
+    };
+
     struct info {
         info( unsigned long addr )
             : list( reinterpret_cast< information_list * >( addr ) )
@@ -44,6 +49,8 @@ namespace multiboot {
 
         information_item * begin() const;
         information_item * end() const;
+
+        memory_info mem() const;
 
         void print() const;
     private:
