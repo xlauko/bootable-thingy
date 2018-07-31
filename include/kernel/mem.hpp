@@ -44,8 +44,8 @@ namespace kernel::mem {
     } // namespace paging
 
     struct heap {
-        static constexpr uint32_t magic = 0x04206969;
 
+        static constexpr uint32_t magic = 0x04206969;
         static constexpr uint32_t magic2 = 0xDEADBEEF;
 
         static constexpr size_t kernel_heap_size = 0xFFFFF;
@@ -64,15 +64,33 @@ namespace kernel::mem {
             uint32_t magic2;
         };
 
+        void * malloc( size_t size );
+        void free( void * ptr );
+
         static void init();
+
+        header * get_header();
+        footer * get_footer();
+
+        size_t size();
+        size_t total_size();
+
+        bool can_fit( size_t size );
+
+        heap * next();
+        heap * prev();
+
+        void * memory();
+
+        bool check();
     };
 
     void * fmalloc( size_t size );
     void * kmalloc_aligned( size_t size );
 
     struct allocator {
-        void * alloc( size_t size );
-        void free( void * ptr );
+        static void * alloc( size_t size );
+        static void free( void * ptr );
     };
 
     void init( size_t mem_size );

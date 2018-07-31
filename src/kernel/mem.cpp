@@ -7,6 +7,15 @@
 
 extern "C" uint32_t kernel_end;
 
+namespace {
+
+    template< typename T1, typename T2 >
+    T1 add_offset_and_cast( T2 val, size_t offset ) {
+        return reinterpret_cast< T1 >( reinterpret_cast< uintptr_t >( val ) + offset );
+    }
+
+} // anonymous namespace
+
 namespace kernel::mem {
 
     uint32_t * frames;
@@ -101,14 +110,18 @@ namespace kernel::mem {
         }
     }
 
+    heap * kernel_heap = nullptr;
+
     void * allocator::alloc( size_t size ) {
+        // TODO user land alloc
+        return kernel_heap->malloc( size );
     }
 
     void allocator::free( void * ptr ) {
-
+        // TODO user land free
+        return kernel_heap->free( ptr );
     }
 
-    heap::header * kheap = nullptr;
 
     uintptr_t placement_addr = reinterpret_cast< uintptr_t >( &kernel_end );
 
@@ -129,19 +142,163 @@ namespace kernel::mem {
     }
 
     void heap::init() {
-        kheap = reinterpret_cast< heap::header * >( fmalloc( heap::kernel_heap_size ) );
-        kheap->magic = heap::magic;
-        kheap->free = true;
-        kheap->size = heap::kernel_heap_size - sizeof( heap::header ) - sizeof( heap::footer );
-        kheap->magic2 = heap::magic2;
+        kernel_heap = reinterpret_cast< heap * >( fmalloc( heap::kernel_heap_size ) );
+        auto header = kernel_heap->get_header();
+        header->magic = heap::magic;
+        header->free = true;
+        header->size = heap::kernel_heap_size - sizeof( heap::header ) - sizeof( heap::footer );
+        header->magic2 = heap::magic2;
 
-        auto footer = reinterpret_cast< heap::footer * >( reinterpret_cast< uintptr_t >( kheap )
-                                                        + sizeof( heap::header ) + kheap->size );
+        auto footer = kernel_heap->get_footer();
         footer->magic = heap::magic;
         footer->size = heap::kernel_heap_end;
         footer->magic2 = heap::magic2;
 
         // TODO init user heap
+    }
+
+    size_t heap::size() { return get_header()->size; }
+
+    size_t heap::total_size() { return size() + sizeof( header ) + sizeof( footer ); }
+
+    heap::header * heap::get_header() {
+        return reinterpret_cast< heap::header * >( this );
+    }
+
+    heap::footer * heap::get_footer() {
+        return add_offset_and_cast< heap::footer * >( get_header(), sizeof( heap::header ) + size() );
+    }
+
+    namespace internal {
+        heap * find_available_heap( heap * heap_ptr, size_t size ) {
+            while ( !heap_ptr->can_fit( size ) || !heap_ptr->get_header()->free ) {
+                auto header_ptr = heap_ptr->get_header();
+                auto footer_ptr = heap_ptr->get_footer();
+
+                if ( footer_ptr->size == heap::kernel_heap_end && !header_ptr->free ) {
+                    fprintf( stderr, "Out of heap space.\n" );
+                    panic();
+                }
+
+                if ( footer_ptr->size != header_ptr->size ) {
+                    fprintf( stderr, "Heap size mismatch.\n" );
+                    panic();
+                }
+
+                heap_ptr = heap_ptr->next();
+            }
+
+            return heap_ptr;
+        }
+
+        void split_heap( heap * heap_ptr, size_t size ) {
+            auto footer_ptr = add_offset_and_cast< heap::footer * >( heap_ptr, sizeof( heap::header ) + size );
+
+            footer_ptr->magic = heap::magic;
+            footer_ptr->size = size;
+            footer_ptr->magic2 = heap::magic2;
+
+            auto header_ptr = heap_ptr->get_header();
+
+            size_t rest = heap_ptr->size() - sizeof( heap::header ) - sizeof( heap::footer ) - size;
+            header_ptr->size = size;
+
+            auto heap_rest = add_offset_and_cast< heap * >( footer_ptr, sizeof( heap::footer ) );
+
+            auto header_rest = heap_rest->get_header();
+            header_rest->magic = heap::magic;
+            header_rest->size = rest;
+            header_rest->free = true;
+            header_rest->magic2 = heap::magic2;
+
+            auto footer_rest = heap_rest->get_footer();
+
+            footer_rest->size = rest;
+
+            if ( !heap_ptr->check() || !heap_rest->check() ) {
+                fprintf( stderr, "Splitting of heap damaged metadata.\n" );
+                panic();
+            }
+        }
+
+        void * malloc( heap * heap_ptr, size_t size ) {
+            auto space = find_available_heap( heap_ptr, size );
+            space->get_header()->free = false;
+            split_heap( space, size );
+            return space->memory();
+        }
+
+        void free( heap * heap_ptr, void * addr ) {
+            auto tofree = add_offset_and_cast< heap * >( addr, - sizeof( heap::header ) );
+
+            if ( tofree == heap_ptr ) {
+                heap_ptr->get_header()->free = true;
+                return;
+            }
+
+            if ( !tofree->check() ) {
+                fprintf( stderr, "Trying to free invalid heap object.\n" );
+                panic();
+            }
+
+            auto prev_ptr = tofree->prev();
+
+            if ( !prev_ptr->check() ) {
+                fprintf( stderr, "Predecessor in heap is corrupted.\n" );
+                panic();
+            }
+
+            prev_ptr->get_header()->size += tofree->total_size();
+            prev_ptr->get_footer()->size = prev_ptr->size();
+        }
+    } // namespace internal;
+
+    bool heap::check() {
+        auto head = get_header();
+        auto foot = get_footer();
+        return head->magic == heap::magic && head->magic2 == heap::magic2 &&
+               foot->magic == heap::magic && foot->magic2 == heap::magic2 &&
+               head->size == foot->size;
+    }
+
+    void * heap::memory() {
+        return add_offset_and_cast< void * >( get_header(), sizeof( header ) );
+    }
+
+    bool heap::can_fit( size_t size ) {
+        return this->size() > size;
+    }
+
+    heap * heap::next() {
+        return add_offset_and_cast< heap * >( get_footer(), sizeof( footer ) );
+    }
+
+    heap * heap::prev() {
+        auto prev_footer = add_offset_and_cast< footer * >( this, -sizeof( footer ) );
+        if ( prev_footer->magic != heap::magic && prev_footer->magic2 != heap::magic2 ) {
+            fprintf( stderr, "Predecessor in heap is corrupted.\n" );
+            panic();
+        }
+
+        return add_offset_and_cast< heap * >( this,
+             - ( sizeof( header ) + sizeof( footer ) + prev_footer->size ) );
+    }
+
+    void * heap::malloc( size_t size ) {
+        if ( kernel_heap == nullptr ) { // TODO remove for user land
+            return fmalloc( size );
+        }
+
+        return internal::malloc( this, size );
+    }
+
+
+    void heap::free( void * ptr ) {
+        if ( kernel_heap == nullptr ) { // TODO remove for user land
+            return;
+        }
+
+        internal::free( this, ptr );
     }
 
     void init( size_t mem_size ) {
