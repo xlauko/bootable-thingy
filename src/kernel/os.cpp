@@ -11,6 +11,7 @@ using namespace kernel::dev;
 
 #include <multiboot2.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static uint16_t* video = reinterpret_cast< uint16_t * >( 0xB8000 );
 

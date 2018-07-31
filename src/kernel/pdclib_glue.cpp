@@ -2,6 +2,7 @@
 #include <_PDCLIB_glue.h>
 
 #include <kernel/os.hpp>
+#include <kernel/mem.hpp>
 
 extern _PDCLIB_fileops_t _PDCLIB_fileops;
 
@@ -13,7 +14,13 @@ extern "C" void _PDCLIB_Exit( int status ) {
     asm volatile ("hlt");
 }
 
-extern "C" void free( void* ) noexcept { }
+extern "C" void free( void * ptr ) noexcept {
+    return kernel::mem::allocator::free( ptr );
+}
+
+extern "C" void * malloc( size_t size ) noexcept {
+    return kernel::mem::allocator::alloc( size );
+}
 
 static bool readf( _PDCLIB_fd_t self, void * buff, size_t length, size_t * numBytesRead ) {
     auto in = static_cast< kernel::dev::Serial * >( self.pointer );
