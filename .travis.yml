@@ -1,0 +1,30 @@
+language: cpp
+
+cpp:
+    - nightly
+
+sudo: false
+
+notifications:
+    email:
+        on_failure: change
+
+matrix:
+    include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - nasm
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+before_install:
+    - eval "${MATRIX_EVAL}"
+
+script:
+  - make
+  - make test
