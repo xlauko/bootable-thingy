@@ -31,7 +31,16 @@ namespace kernel {
 
 
 	namespace irq {
+		static constexpr size_t num_of_handlers = 16;
+
 		using handler = void (*) ( uint32_t );
+
+		void install_handler( unsigned irq, irq::handler handler );
+		void uninstall_handler( unsigned irq );
+
+		void remap();
+
+		void inti();
 	}
 
 	namespace isrs {
@@ -57,7 +66,7 @@ namespace kernel {
         static constexpr size_t size = 256;
 
         template< size_t idx >
-        void set( uint32_t base, uint16_t selector = 0x08, uint8_t flags = 0x8E );
+        void set( irq::handler handler, uint16_t selector = 0x08, uint8_t flags = 0x8E );
 
         static void init();
     } PACKED;

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <kernel/panic.hpp>
+#include <kernel/ioport.hpp>
 
 using namespace kernel;
 
@@ -51,42 +52,62 @@ extern "C" {
 extern "C" void __idt_flush();
 
 extern "C" {
-    void isr0();
-    void isr1();
-    void isr2();
-    void isr3();
-    void isr4();
-    void isr5();
-    void isr6();
-    void isr7();
-    void isr8();
-    void isr9();
-    void isr10();
-    void isr11();
-    void isr12();
-    void isr13();
-    void isr14();
-    void isr15();
-    void isr16();
-    void isr17();
-    void isr18();
-    void isr19();
-    void isr20();
-    void isr21();
-    void isr22();
-    void isr23();
-    void isr24();
-    void isr25();
-    void isr26();
-    void isr27();
-    void isr28();
-    void isr29();
-    void isr30();
-    void isr31();
+    void isr0( unsigned int );
+    void isr1( unsigned int );
+    void isr2( unsigned int );
+    void isr3( unsigned int );
+    void isr4( unsigned int );
+    void isr5( unsigned int );
+    void isr6( unsigned int );
+    void isr7( unsigned int );
+    void isr8( unsigned int );
+    void isr9( unsigned int );
+    void isr10( unsigned int );
+    void isr11( unsigned int );
+    void isr12( unsigned int );
+    void isr13( unsigned int );
+    void isr14( unsigned int );
+    void isr15( unsigned int );
+    void isr16( unsigned int );
+    void isr17( unsigned int );
+    void isr18( unsigned int );
+    void isr19( unsigned int );
+    void isr20( unsigned int );
+    void isr21( unsigned int );
+    void isr22( unsigned int );
+    void isr23( unsigned int );
+    void isr24( unsigned int );
+    void isr25( unsigned int );
+    void isr26( unsigned int );
+    void isr27( unsigned int );
+    void isr28( unsigned int );
+    void isr29( unsigned int );
+    void isr30( unsigned int );
+    void isr31( unsigned int );
+}
+
+extern "C" {
+    void irq0( unsigned int );
+    void irq1( unsigned int );
+    void irq2( unsigned int );
+    void irq3( unsigned int );
+    void irq4( unsigned int );
+    void irq5( unsigned int );
+    void irq6( unsigned int );
+    void irq7( unsigned int );
+    void irq8( unsigned int );
+    void irq9( unsigned int );
+    void irq10( unsigned int );
+    void irq11( unsigned int );
+    void irq12( unsigned int );
+    void irq13( unsigned int );
+    void irq14( unsigned int );
+    void irq15( unsigned int );
 }
 
 template< size_t idx >
-void idt::set( uint32_t base, uint16_t selector, uint8_t flags ) {
+void idt::set( irq::handler handler, uint16_t selector, uint8_t flags ) {
+    auto base = reinterpret_cast< uint32_t >( handler );
     auto &item = idtable[ idx ];
     item.base_low  = (base & 0xFFFF);
     item.base_high = (base >> 16) & 0xFFFF;
@@ -104,38 +125,38 @@ void idt::init() {
 
     memset( &idtable, 0, sizeof( idt::item ) * idt::size );
 
-    idt_ptr.set< 0 >( reinterpret_cast< uint32_t >( isr0 ) );
-    idt_ptr.set< 1 >( reinterpret_cast< uint32_t >( isr1 ) );
-    idt_ptr.set< 2 >( reinterpret_cast< uint32_t >( isr2 ) );
-    idt_ptr.set< 3 >( reinterpret_cast< uint32_t >( isr3 ) );
-    idt_ptr.set< 4 >( reinterpret_cast< uint32_t >( isr4 ) );
-    idt_ptr.set< 5 >( reinterpret_cast< uint32_t >( isr5 ) );
-    idt_ptr.set< 6 >( reinterpret_cast< uint32_t >( isr6 ) );
-    idt_ptr.set< 7 >( reinterpret_cast< uint32_t >( isr7 ) );
-    idt_ptr.set< 8 >( reinterpret_cast< uint32_t >( isr8 ) );
-    idt_ptr.set< 9 >( reinterpret_cast< uint32_t >( isr9 ) );
-    idt_ptr.set< 10 >( reinterpret_cast< uint32_t >( isr10 ) );
-    idt_ptr.set< 11 >( reinterpret_cast< uint32_t >( isr11 ) );
-    idt_ptr.set< 12 >( reinterpret_cast< uint32_t >( isr12 ) );
-    idt_ptr.set< 13 >( reinterpret_cast< uint32_t >( isr13 ) );
-    idt_ptr.set< 14 >( reinterpret_cast< uint32_t >( isr14 ) );
-    idt_ptr.set< 15 >( reinterpret_cast< uint32_t >( isr15 ) );
-    idt_ptr.set< 16 >( reinterpret_cast< uint32_t >( isr16 ) );
-    idt_ptr.set< 17 >( reinterpret_cast< uint32_t >( isr17 ) );
-    idt_ptr.set< 18 >( reinterpret_cast< uint32_t >( isr18 ) );
-    idt_ptr.set< 19 >( reinterpret_cast< uint32_t >( isr19 ) );
-    idt_ptr.set< 20 >( reinterpret_cast< uint32_t >( isr20 ) );
-    idt_ptr.set< 21 >( reinterpret_cast< uint32_t >( isr21 ) );
-    idt_ptr.set< 22 >( reinterpret_cast< uint32_t >( isr22 ) );
-    idt_ptr.set< 23 >( reinterpret_cast< uint32_t >( isr23 ) );
-    idt_ptr.set< 24 >( reinterpret_cast< uint32_t >( isr24 ) );
-    idt_ptr.set< 25 >( reinterpret_cast< uint32_t >( isr25 ) );
-    idt_ptr.set< 26 >( reinterpret_cast< uint32_t >( isr26 ) );
-    idt_ptr.set< 27 >( reinterpret_cast< uint32_t >( isr27 ) );
-    idt_ptr.set< 28 >( reinterpret_cast< uint32_t >( isr28 ) );
-    idt_ptr.set< 29 >( reinterpret_cast< uint32_t >( isr29 ) );
-    idt_ptr.set< 30 >( reinterpret_cast< uint32_t >( isr30 ) );
-    idt_ptr.set< 31 >( reinterpret_cast< uint32_t >( isr31 ) );
+    idt_ptr.set< 0 >( isr0 );
+    idt_ptr.set< 1 >( isr1 );
+    idt_ptr.set< 2 >( isr2 );
+    idt_ptr.set< 3 >( isr3 );
+    idt_ptr.set< 4 >( isr4 );
+    idt_ptr.set< 5 >( isr5 );
+    idt_ptr.set< 6 >( isr6 );
+    idt_ptr.set< 7 >( isr7 );
+    idt_ptr.set< 8 >( isr8 );
+    idt_ptr.set< 9 >( isr9 );
+    idt_ptr.set< 10 >( isr10 );
+    idt_ptr.set< 11 >( isr11 );
+    idt_ptr.set< 12 >( isr12 );
+    idt_ptr.set< 13 >( isr13 );
+    idt_ptr.set< 14 >( isr14 );
+    idt_ptr.set< 15 >( isr15 );
+    idt_ptr.set< 16 >( isr16 );
+    idt_ptr.set< 17 >( isr17 );
+    idt_ptr.set< 18 >( isr18 );
+    idt_ptr.set< 19 >( isr19 );
+    idt_ptr.set< 20 >( isr20 );
+    idt_ptr.set< 21 >( isr21 );
+    idt_ptr.set< 22 >( isr22 );
+    idt_ptr.set< 23 >( isr23 );
+    idt_ptr.set< 24 >( isr24 );
+    idt_ptr.set< 25 >( isr25 );
+    idt_ptr.set< 26 >( isr26 );
+    idt_ptr.set< 27 >( isr27 );
+    idt_ptr.set< 28 >( isr28 );
+    idt_ptr.set< 29 >( isr29 );
+    idt_ptr.set< 30 >( isr30 );
+    idt_ptr.set< 31 >( isr31 );
 
     __idt_flush();
 }
@@ -177,6 +198,8 @@ const char *exception_messages[] = {
 
 extern "C" {
 	irq::handler isrs_handlers[ isrs::num_of_handlers ] = { nullptr };
+
+    irq::handler irq_handlers[ irq::num_of_handlers ] = { nullptr };
 }
 
 namespace kernel::isrs {
@@ -187,6 +210,51 @@ namespace kernel::isrs {
 	void uninstall_handler( unsigned isrs ) {
 		isrs_handlers[ isrs ] = nullptr;
 	}
+}
+
+namespace kernel::irq {
+	void install_handler( unsigned irq, irq::handler handler ) {
+		irq_handlers[ irq ] = handler;
+	}
+
+	void uninstall_handler( unsigned irq ) {
+		irq_handlers[ irq ] = nullptr;
+	}
+
+	void remap() {
+        dev::outb( 0x20, 0x11 );
+        dev::outb( 0xA0, 0x11 );
+        dev::outb( 0x21, 0x20 );
+        dev::outb( 0xA1, 0x28 );
+        dev::outb( 0x21, 0x04 );
+        dev::outb( 0xA1, 0x02 );
+        dev::outb( 0x21, 0x01 );
+        dev::outb( 0xA1, 0x01 );
+        dev::outb( 0x21, 0x0 );
+        dev::outb( 0xA1, 0x0 );
+    };
+
+    void init() {
+        irq::remap();
+
+        idt_ptr.set< 32 >( irq0 );
+        idt_ptr.set< 33 >( irq1 );
+        idt_ptr.set< 34 >( irq2 );
+        idt_ptr.set< 35 >( irq3 );
+        idt_ptr.set< 36 >( irq4 );
+        idt_ptr.set< 37 >( irq5 );
+        idt_ptr.set< 38 >( irq6 );
+        idt_ptr.set< 39 >( irq7 );
+        idt_ptr.set< 40 >( irq8 );
+        idt_ptr.set< 41 >( irq9 );
+        idt_ptr.set< 42 >( irq10 );
+        idt_ptr.set< 43 >( irq11 );
+        idt_ptr.set< 44 >( irq12 );
+        idt_ptr.set< 45 >( irq13 );
+        idt_ptr.set< 46 >( irq14 );
+        idt_ptr.set< 47 >( irq15 );
+    }
+
 }
 
 extern "C" void isr_default_handler( unsigned int_no ) {
@@ -207,6 +275,24 @@ extern "C" void isr_default_handler( unsigned int_no ) {
 	}
 }
 
+extern "C" void irq_default_handler( unsigned int_no ) {
+    if ( int_no < 32 || int_no > 47 ) {
+    	panic();
+    }
+
+    // Send an EOI (end of interrupt) signal to the PICs.
+    // If this interrupt involved the slave.
+    if ( int_no >= 40 ) {
+        // Send reset signal to slave.
+        dev::outb( 0xA0, 0x20 );
+    }
+    // Send reset signal to master. (As well as slave, if necessary).
+    dev::outb( 0x20, 0x20 );
+
+    if ( auto handler = irq_handlers[ int_no - 32 ] ) {
+        handler( int_no );
+    }
+}
 namespace kernel::dt {
 
     void init() {

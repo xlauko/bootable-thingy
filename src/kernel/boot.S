@@ -94,6 +94,16 @@ __idt_flush:
         jmp __isr_default_handler_wrapper
 .endm
 
+.macro IRQ_CALL num:req idx:req
+    .global irq\num
+    irq\num:
+		cli
+		pusha
+		mov $\idx, %eax
+		push %eax
+		jmp __irq_default_handler_wrapper
+.endm
+
 ISR_NOERR 0
 ISR_NOERR 1
 ISR_NOERR 2
@@ -127,10 +137,37 @@ ISR_NOERR 29
 ISR_NOERR 30
 ISR_NOERR 31
 
+IRQ_CALL 0, 32
+IRQ_CALL 1, 33
+IRQ_CALL 2, 34
+IRQ_CALL 3, 35
+IRQ_CALL 4, 36
+IRQ_CALL 5, 37
+IRQ_CALL 6, 38
+IRQ_CALL 7, 39
+IRQ_CALL 8, 40
+IRQ_CALL 9, 41
+IRQ_CALL 10, 42
+IRQ_CALL 11, 43
+IRQ_CALL 12, 44
+IRQ_CALL 13, 45
+IRQ_CALL 14, 46
+IRQ_CALL 15, 47
+
 .extern isr_default_handler
 .global __isr_default_handler_wrapper
 __isr_default_handler_wrapper:
 	call isr_default_handler
+	pop %eax
+
+	popa
+	sti
+	iret
+
+.extern irq_default_handler
+.global __irq_default_handler_wrapper
+__irq_default_handler_wrapper:
+	call irq_default_handler
 	pop %eax
 
 	popa
