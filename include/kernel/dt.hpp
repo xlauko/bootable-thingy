@@ -56,6 +56,8 @@ namespace kernel {
 
 		void install_handler( unsigned isrs, irq::handler handler );
 		void uninstall_handler( unsigned isrs );
+
+		void inti();
 	}
 
     struct idt {

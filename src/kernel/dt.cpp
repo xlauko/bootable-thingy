@@ -125,39 +125,6 @@ void idt::init() {
 
     memset( &idtable, 0, sizeof( idt::item ) * idt::size );
 
-    idt_ptr.set< 0 >( isr0 );
-    idt_ptr.set< 1 >( isr1 );
-    idt_ptr.set< 2 >( isr2 );
-    idt_ptr.set< 3 >( isr3 );
-    idt_ptr.set< 4 >( isr4 );
-    idt_ptr.set< 5 >( isr5 );
-    idt_ptr.set< 6 >( isr6 );
-    idt_ptr.set< 7 >( isr7 );
-    idt_ptr.set< 8 >( isr8 );
-    idt_ptr.set< 9 >( isr9 );
-    idt_ptr.set< 10 >( isr10 );
-    idt_ptr.set< 11 >( isr11 );
-    idt_ptr.set< 12 >( isr12 );
-    idt_ptr.set< 13 >( isr13 );
-    idt_ptr.set< 14 >( isr14 );
-    idt_ptr.set< 15 >( isr15 );
-    idt_ptr.set< 16 >( isr16 );
-    idt_ptr.set< 17 >( isr17 );
-    idt_ptr.set< 18 >( isr18 );
-    idt_ptr.set< 19 >( isr19 );
-    idt_ptr.set< 20 >( isr20 );
-    idt_ptr.set< 21 >( isr21 );
-    idt_ptr.set< 22 >( isr22 );
-    idt_ptr.set< 23 >( isr23 );
-    idt_ptr.set< 24 >( isr24 );
-    idt_ptr.set< 25 >( isr25 );
-    idt_ptr.set< 26 >( isr26 );
-    idt_ptr.set< 27 >( isr27 );
-    idt_ptr.set< 28 >( isr28 );
-    idt_ptr.set< 29 >( isr29 );
-    idt_ptr.set< 30 >( isr30 );
-    idt_ptr.set< 31 >( isr31 );
-
     __idt_flush();
 }
 
@@ -210,6 +177,40 @@ namespace kernel::isrs {
 	void uninstall_handler( unsigned isrs ) {
 		isrs_handlers[ isrs ] = nullptr;
 	}
+
+	void init() {
+        idt_ptr.set< 1 >( isr1 );
+        idt_ptr.set< 2 >( isr2 );
+        idt_ptr.set< 3 >( isr3 );
+        idt_ptr.set< 4 >( isr4 );
+        idt_ptr.set< 5 >( isr5 );
+        idt_ptr.set< 6 >( isr6 );
+        idt_ptr.set< 7 >( isr7 );
+        idt_ptr.set< 8 >( isr8 );
+        idt_ptr.set< 9 >( isr9 );
+        idt_ptr.set< 10 >( isr10 );
+        idt_ptr.set< 11 >( isr11 );
+        idt_ptr.set< 12 >( isr12 );
+        idt_ptr.set< 13 >( isr13 );
+        idt_ptr.set< 14 >( isr14 );
+        idt_ptr.set< 15 >( isr15 );
+        idt_ptr.set< 16 >( isr16 );
+        idt_ptr.set< 17 >( isr17 );
+        idt_ptr.set< 18 >( isr18 );
+        idt_ptr.set< 19 >( isr19 );
+        idt_ptr.set< 20 >( isr20 );
+        idt_ptr.set< 21 >( isr21 );
+        idt_ptr.set< 22 >( isr22 );
+        idt_ptr.set< 23 >( isr23 );
+        idt_ptr.set< 24 >( isr24 );
+        idt_ptr.set< 25 >( isr25 );
+        idt_ptr.set< 26 >( isr26 );
+        idt_ptr.set< 27 >( isr27 );
+        idt_ptr.set< 28 >( isr28 );
+        idt_ptr.set< 29 >( isr29 );
+        idt_ptr.set< 30 >( isr30 );
+        idt_ptr.set< 31 >( isr31 );
+    }
 }
 
 namespace kernel::irq {
@@ -298,6 +299,8 @@ namespace kernel::dt {
     void init() {
         gdt::init();
         idt::init();
+        isrs::init();
+        irq::init();
     }
 
 } // namespace dt;
