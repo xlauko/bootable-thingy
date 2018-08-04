@@ -37,7 +37,7 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     init_pdclib( &ser );
 
     puts( "Initialization of Thingy finished." );
-
+    asm volatile( "int $3\n" );
     // info.print();
 
     kvga << "You can write now:\n";

@@ -52,57 +52,57 @@ extern "C" {
 extern "C" void __idt_flush();
 
 extern "C" {
-    void isr0( unsigned int );
-    void isr1( unsigned int );
-    void isr2( unsigned int );
-    void isr3( unsigned int );
-    void isr4( unsigned int );
-    void isr5( unsigned int );
-    void isr6( unsigned int );
-    void isr7( unsigned int );
-    void isr8( unsigned int );
-    void isr9( unsigned int );
-    void isr10( unsigned int );
-    void isr11( unsigned int );
-    void isr12( unsigned int );
-    void isr13( unsigned int );
-    void isr14( unsigned int );
-    void isr15( unsigned int );
-    void isr16( unsigned int );
-    void isr17( unsigned int );
-    void isr18( unsigned int );
-    void isr19( unsigned int );
-    void isr20( unsigned int );
-    void isr21( unsigned int );
-    void isr22( unsigned int );
-    void isr23( unsigned int );
-    void isr24( unsigned int );
-    void isr25( unsigned int );
-    void isr26( unsigned int );
-    void isr27( unsigned int );
-    void isr28( unsigned int );
-    void isr29( unsigned int );
-    void isr30( unsigned int );
-    void isr31( unsigned int );
+    void isr0( registers_t * );
+    void isr1( registers_t * );
+    void isr2( registers_t * );
+    void isr3( registers_t * );
+    void isr4( registers_t * );
+    void isr5( registers_t * );
+    void isr6( registers_t * );
+    void isr7( registers_t * );
+    void isr8( registers_t * );
+    void isr9( registers_t * );
+    void isr10( registers_t * );
+    void isr11( registers_t * );
+    void isr12( registers_t * );
+    void isr13( registers_t * );
+    void isr14( registers_t * );
+    void isr15( registers_t * );
+    void isr16( registers_t * );
+    void isr17( registers_t * );
+    void isr18( registers_t * );
+    void isr19( registers_t * );
+    void isr20( registers_t * );
+    void isr21( registers_t * );
+    void isr22( registers_t * );
+    void isr23( registers_t * );
+    void isr24( registers_t * );
+    void isr25( registers_t * );
+    void isr26( registers_t * );
+    void isr27( registers_t * );
+    void isr28( registers_t * );
+    void isr29( registers_t * );
+    void isr30( registers_t * );
+    void isr31( registers_t * );
 }
 
 extern "C" {
-    void irq0( unsigned int );
-    void irq1( unsigned int );
-    void irq2( unsigned int );
-    void irq3( unsigned int );
-    void irq4( unsigned int );
-    void irq5( unsigned int );
-    void irq6( unsigned int );
-    void irq7( unsigned int );
-    void irq8( unsigned int );
-    void irq9( unsigned int );
-    void irq10( unsigned int );
-    void irq11( unsigned int );
-    void irq12( unsigned int );
-    void irq13( unsigned int );
-    void irq14( unsigned int );
-    void irq15( unsigned int );
+    void irq0( registers_t * );
+    void irq1( registers_t * );
+    void irq2( registers_t * );
+    void irq3( registers_t * );
+    void irq4( registers_t * );
+    void irq5( registers_t * );
+    void irq6( registers_t * );
+    void irq7( registers_t * );
+    void irq8( registers_t * );
+    void irq9( registers_t * );
+    void irq10( registers_t * );
+    void irq11( registers_t * );
+    void irq12( registers_t * );
+    void irq13( registers_t * );
+    void irq14( registers_t * );
+    void irq15( registers_t * );
 }
 
 template< size_t idx >
@@ -257,40 +257,40 @@ namespace kernel::irq {
 
 }
 
-extern "C" void isr_default_handler( unsigned int_no ) {
-    if ( int_no == 8 ) {
-        fprintf( stderr, "%s\n", exception_messages[ int_no ] );
+extern "C" void isr_default_handler( registers_t * regs ) {
+    if ( regs->int_no == 8 ) {
+        fprintf( stderr, "%s\n", exception_messages[ regs->int_no ] );
 		panic();
     }
 
-    if ( int_no >= 32 ) {
+    if ( regs->int_no >= 32 ) {
     	panic();
 	}
 
-    if ( auto handler = isrs_handlers[ int_no ] ) {
-        handler( int_no );
+    if ( auto handler = isrs_handlers[ regs->int_no ] ) {
+        handler( regs );
     } else {
-        fprintf( stderr, "Unhandled exception: [%d] %s\n", int_no, exception_messages[ int_no ] );
+        fprintf( stderr, "Unhandled exception: [%d] %s\n", regs->int_no, exception_messages[ regs->int_no ] );
     	panic();
 	}
 }
 
-extern "C" void irq_default_handler( unsigned int_no ) {
-    if ( int_no < 32 || int_no > 47 ) {
+extern "C" void irq_default_handler( registers_t *regs ) {
+    if ( regs->int_no < 32 || regs->int_no > 47 ) {
     	panic();
     }
 
     // Send an EOI (end of interrupt) signal to the PICs.
     // If this interrupt involved the slave.
-    if ( int_no >= 40 ) {
+    if ( regs->int_no >= 40 ) {
         // Send reset signal to slave.
         dev::outb( 0xA0, 0x20 );
     }
     // Send reset signal to master. (As well as slave, if necessary).
     dev::outb( 0x20, 0x20 );
 
-    if ( auto handler = irq_handlers[ int_no - 32 ] ) {
-        handler( int_no );
+    if ( auto handler = irq_handlers[ regs->int_no - 32 ] ) {
+        handler( regs );
     }
 }
 namespace kernel::dt {

@@ -62,7 +62,7 @@ namespace kernel::mem {
             cr0::set( cr0::get() | 0x80000000 );
         }
 
-        void page_fault_handler( uint32_t int_no ) {
+        void page_fault_handler( registers_t * ) {
             uint32_t faulting_address;
             asm volatile( "mov %%cr2, %0" : "=r"( faulting_address ) );
 

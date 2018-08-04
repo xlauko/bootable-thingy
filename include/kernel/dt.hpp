@@ -5,7 +5,15 @@
 
 #define PACKED __attribute__((packed))
 
+
+
 namespace kernel {
+    typedef struct registers{
+        uint32_t ds;
+        uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+        uint32_t int_no, err_code;
+        uint32_t eip, cs, eflags, useresp, ss;
+    } registers_t;
 
     struct gdt {
 
@@ -33,7 +41,7 @@ namespace kernel {
 	namespace irq {
 		static constexpr size_t num_of_handlers = 16;
 
-		using handler = void (*) ( uint32_t );
+		using handler = void (*) ( registers_t * );
 
 		void install_handler( unsigned irq, irq::handler handler );
 		void uninstall_handler( unsigned irq );
