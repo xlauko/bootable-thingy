@@ -96,9 +96,8 @@ __idt_flush:
     .global irq\num
     irq\num:
 		cli
-		pusha
-		mov $\idx, %eax
-		push %eax
+		push $0
+		push $\idx
 		jmp __irq_default_handler_wrapper
 .endm
 
@@ -183,10 +182,27 @@ __isr_default_handler_wrapper:
 .extern irq_default_handler
 .global __irq_default_handler_wrapper
 __irq_default_handler_wrapper:
+    pusha
+    mov %ax, %ds
+    push %eax
+
+    mov %ax, 0x10
+    mov %ds, %ax
+	mov %es, %ax
+	mov %fs, %ax
+	mov %gs, %ax
+	push %esp
+
 	call irq_default_handler
-	pop %eax
+
+	add %esp, 4
+	pop %ebx
+    mov %ds, %bx
+	mov %es, %bx
+	mov %fs, %bx
+	mov %gs, %bx
 
 	popa
+	add %esp, 8
 	sti
 	iret
-

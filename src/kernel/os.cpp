@@ -19,6 +19,10 @@ namespace kernel {
     void init_pdclib( dev::Serial * ser );
 }
 
+void test_handler( registers_t * regs ) {
+    printf( "in irq handler %d\n", regs->int_no );
+}
+
 void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     Serial ser{ Serial::Port::one };
     VGA kvga{ video };
@@ -36,8 +40,9 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
+    irq::install_handler( 1, test_handler );
     puts( "Initialization of Thingy finished." );
-    asm volatile( "int $3\n" );
+    asm volatile( "int $33\n" );
     // info.print();
 
     kvga << "You can write now:\n";
