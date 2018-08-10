@@ -15,11 +15,13 @@ extern "C" void _PDCLIB_Exit( int status ) {
 }
 
 extern "C" void free( void * ptr ) noexcept {
-    return kernel::mem::allocator::free( ptr );
+    using kernel::mem::kernel_allocator;
+    return kernel::mem::allocator< kernel_allocator >::free( ptr );
 }
 
 extern "C" void * malloc( size_t size ) noexcept {
-    return kernel::mem::allocator::alloc( size );
+    using kernel::mem::kernel_allocator;
+    return kernel::mem::allocator< kernel_allocator >::alloc( size );
 }
 
 static bool readf( _PDCLIB_fd_t self, void * buff, size_t length, size_t * numBytesRead ) {

@@ -104,22 +104,33 @@ namespace kernel::mem {
             reinterpret_cast< uint32_t >( tab ) | 3 );
 
         for ( size_t i = 0; i < page_table::size; i++ ) {
-            tab->pages[ i ].frame = phys >> 12; // TODO?
+            tab->pages[ i ].frame = phys >> 12;
             tab->pages[ i ].present = 1;
             phys += 4096;
         }
     }
 
     heap * kernel_heap = nullptr;
+    heap * user_heap = nullptr;
 
-    void * allocator::alloc( size_t size ) {
-        // TODO user land alloc
+    template<>
+    void * allocator< kernel_allocator >::alloc( size_t size ) {
         return kernel_heap->malloc( size );
     }
 
-    void allocator::free( void * ptr ) {
-        // TODO user land free
+    template<>
+    void allocator< kernel_allocator >::free( void * ptr ) {
         return kernel_heap->free( ptr );
+    }
+
+    template<>
+    void * allocator< user_allocator >::alloc( size_t size ) {
+        return user_heap->malloc( size );
+    }
+
+    template<>
+    void allocator< user_allocator >::free( void * ptr ) {
+        return user_heap->free( ptr );
     }
 
 
@@ -285,7 +296,7 @@ namespace kernel::mem {
     }
 
     void * heap::malloc( size_t size ) {
-        if ( kernel_heap == nullptr ) { // TODO remove for user land
+        if ( kernel_heap == nullptr ) {
             return fmalloc( size );
         }
 
@@ -294,10 +305,18 @@ namespace kernel::mem {
 
 
     void heap::free( void * ptr ) {
-        if ( kernel_heap == nullptr ) { // TODO remove for user land
+        if ( kernel_heap == nullptr ) {
             return;
         }
 
+        internal::free( this, ptr );
+    }
+
+    void * heap::umalloc( size_t size ) {
+        return internal::malloc( this, size );
+    }
+
+    void heap::ufree( void * ptr ) {
         internal::free( this, ptr );
     }
 

@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <kernel/ioport.hpp>
+
 #define PACKED __attribute__((packed))
-
-
 
 namespace kernel {
     typedef struct registers{
@@ -49,6 +49,22 @@ namespace kernel {
 		void remap();
 
 		void inti();
+
+		namespace pic {
+            static constexpr uint8_t PORT_DATA[ 2 ] = { 0x21, 0xA1 };
+
+            static void enable( uint8_t id ) {
+                bool pic = id >= 8;
+                uint8_t mask = dev::inb( PORT_DATA[ pic ] );
+                dev::outb( PORT_DATA[ pic ], mask & ~( 1 << ( id % 8 ) ) );
+            }
+
+            static void disable( uint8_t id ) {
+                bool pic = id >= 8;
+                uint8_t mask = dev::inb( PORT_DATA[ pic ] );
+                dev::outb( PORT_DATA[ pic ], mask | ( 1 << ( id % 8 ) ) );
+            }
+        }
 	}
 
 	namespace isrs {

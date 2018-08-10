@@ -15,6 +15,8 @@ using namespace kernel::dev;
 
 static uint16_t* video = reinterpret_cast< uint16_t * >( 0xB8000 );
 
+unsigned int stack_ptr;
+
 namespace kernel {
     void init_pdclib( dev::Serial * ser );
 }
@@ -40,15 +42,27 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
-    irq::install_handler( 1, test_handler );
     puts( "Initialization of Thingy finished." );
-    asm volatile( "int $33\n" );
+
+    // TODO page fault? *(reinterpret_cast< int * >( 0x1000 ) ) = 42;
+
+    // TODO press key to irq
+    /*irq::install_handler( 1, [] ( registers_t * ) {
+        puts( "pressed key" );
+        irq::pic::enable( 0 );
+        irq::pic::disable( 1 );
+    } );*/
+
+    //irq::install_handler( 1, test_handler );
+    //asm volatile( "int $33\n" );
     // info.print();
 
-    kvga << "You can write now:\n";
+    // Go go user space
+
+    /*kvga << "You can write now:\n";
     while ( true ) {
         kvga << ser.read();
-    }
+    }*/
 }
 
 void Thingy::init_devices( dev::Serial *ser, dev::VGA *_vga ) noexcept {
@@ -56,7 +70,8 @@ void Thingy::init_devices( dev::Serial *ser, dev::VGA *_vga ) noexcept {
     vga = _vga;
 }
 
-extern "C" void main( unsigned long magic, unsigned long addr ) {
+extern "C" void main( unsigned long magic, unsigned long addr, unsigned int esp ) {
+    stack_ptr = esp;
     Thingy::start( magic, addr );
 }
 

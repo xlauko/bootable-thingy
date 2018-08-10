@@ -29,6 +29,7 @@ multiboot_entry:
         pushl   $0
         popf                                /* reset EFLAGS */
 
+        push   %esp
         pushl   %ebx /* multiboot information structure */
         pushl   %eax /* multiboot magic value */
 
