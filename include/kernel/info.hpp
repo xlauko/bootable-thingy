@@ -37,6 +37,8 @@ namespace multiboot {
         struct information_list {};
     }
 
+    information_item * next( information_item * item );
+
     struct memory_info {
         size_t lower;
         size_t upper;
@@ -53,11 +55,26 @@ namespace multiboot {
         memory_info mem() const;
 
         void print() const;
+
+        template< typename Fn >
+        void yield( Fn fn ) const {
+            for ( auto item = begin(); item->type != information_type::end; item = next( item ) )
+                fn( item );
+        }
+
+        template< typename Fn >
+        void yield( information_type type, Fn fn ) const {
+            yield( [&] ( const auto & item ) {
+                if ( item->type == type )
+                    fn( item );
+            } );
+        }
+
+
     private:
         information_list * list;
     };
 
-    information_item * next( information_item * item );
 
     struct end_information {
         information_type type;

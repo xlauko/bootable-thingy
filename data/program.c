@@ -9,6 +9,6 @@ void _start() {
 }
 
 int main() {
-    printf( "Hello from user land.\n" );
+//    printf( "Hello from user land.\n" );
     return 0;
 }

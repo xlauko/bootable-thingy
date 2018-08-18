@@ -8,6 +8,7 @@ using namespace kernel::dev;
 #include <kernel/panic.hpp>
 #include <kernel/mem.hpp>
 #include <kernel/dt.hpp>
+#include <kernel/syscall.hpp>
 
 #include <multiboot2.h>
 #include <stdio.h>
@@ -42,6 +43,9 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
+    syscall::init();
+    info.print();
+
     puts( "Initialization of Thingy finished." );
 
     // TODO page fault? *(reinterpret_cast< int * >( 0x1000 ) ) = 42;
@@ -55,7 +59,6 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     //irq::install_handler( 1, test_handler );
     //asm volatile( "int $33\n" );
-    // info.print();
 
     // Go go user space
 

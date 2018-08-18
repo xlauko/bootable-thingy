@@ -32,9 +32,9 @@ memory_info info::mem() const {
 
     basic_memory_information * bmi = nullptr;
 
-    for ( auto item = begin(); item->type != information_type::end; item = next( item ) )
-        if ( item->type == information_type::basic_memory )
-            bmi = reinterpret_cast< basic_memory_information * >( item );
+    yield( information_type::basic_memory, [&] ( const auto & item ) {
+        bmi = reinterpret_cast< basic_memory_information * >( item );
+    } );
 
     if ( bmi == nullptr ) {
         fprintf( stderr, "No memory information in multiboot tags." );
@@ -48,14 +48,10 @@ memory_info info::mem() const {
 }
 
 void info::print() const {
-    for ( auto item = begin(); item->type != information_type::end; item = next( item ) ) {
-        if ( item->type == information_type::basic_memory ) {
-            auto bmi = reinterpret_cast< basic_memory_information * >( item );
-            printf( "memory lower: %d, memory upper: %d\n", bmi->lower, bmi->upper );
-        } else if ( item->type == information_type::memory_map ) {
-            auto mmi = reinterpret_cast< memory_map_information * >( item );
-        }
-    }
+    basic_memory_information * bmi = nullptr;
+    for ( auto item = begin(); item->type != information_type::end; item = next( item ) )
+        if ( item->type == information_type::basic_memory )
+            bmi = reinterpret_cast< basic_memory_information * >( item );
 }
 
 } // namespace multiboot
