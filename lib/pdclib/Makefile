@@ -3,10 +3,10 @@
 CC  = clang
 CXX = clang++
 
-PLATFORM = kernel
+PLATFORM_KERNEL = kernel
 
-KERNEL_INCLUDE_DIR = $(INCLUDE_DIR) platform/$(PLATFORM)/includes platform/$(PLATFORM)/internals
-KERNEL_SRC = $(SRC) $(wildcard platform/$(PLATFORM)/functions/*/*.c)
+KERNEL_INCLUDE_DIR = $(INCLUDE_DIR) platform/$(PLATFORM_KERNEL)/includes platform/$(PLATFORM_KERNEL)/internals
+KERNEL_SRC = $(SRC) $(wildcard platform/$(PLATFORM_KERNEL)/functions/*/*.c)
 OBJ = $(KERNEL_SRC:.c=.o)
 KERNEL_OBJ = $(addprefix build/kernel/, $(OBJ))
 KERNEL_INCLUDES = $(foreach i, $(KERNEL_INCLUDE_DIR), -I$i)
@@ -19,18 +19,17 @@ FLAGS = -mno-sse -m32 -ffreestanding -nostdlib -static -fno-stack-protector -fno
 CFLAGS += $(FLAGS) -std=c11
 CXXFLAGS += $(FLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
-
 kernel: INCLUDES = $(KERNEL_INCLUDES)
 kernel: kernel_pdclib.a
 
 kernel_pdclib.a: $(KERNEL_OBJ)
 	ar rcs $@ $(KERNEL_OBJ)
 
-build/$(PLATFORM)/%.o: %.c
+build/$(PLATFORM_KERNEL)/%.o: %.c
 	$(CC) -o $@ -c $(CFLAGS) $<
-build/$(PLATFORM)/%.o: %.S
+build/$(PLATFORM_KERNEL)/%.o: %.S
 	$(CC) -o $@ -c $(CFLAGS) $<
-build/$(PLATFORM)/%.o: %.cpp
+build/$(PLATFORM_KERNEL)/%.o: %.cpp
 	$(CXX) -o $@ -c $(CXXFLAGS) $<
 
 clean:
