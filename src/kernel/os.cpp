@@ -8,11 +8,13 @@ using namespace kernel::dev;
 #include <kernel/panic.hpp>
 #include <kernel/mem.hpp>
 #include <kernel/dt.hpp>
+#include <kernel/user.hpp>
 #include <kernel/syscall.hpp>
 
 #include <multiboot2.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static uint16_t* video = reinterpret_cast< uint16_t * >( 0xB8000 );
 
@@ -37,16 +39,42 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     kernel::dt::init();
 
-    auto mem_info = info.mem();
-    mem::init( mem_info.upper + mem_info.lower );
-
+    // TODO move after mem init
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
-    syscall::init();
-    info.print();
+    user::executable program;
 
-    puts( "Initialization of Thingy finished." );
+    info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
+        using namespace mem::paging;
+
+        auto mod = reinterpret_cast< multiboot::modules_information * >( item );
+        if ( strcmp( mod->command, "program.data" ) == 0 ) {
+            program.text.addr = reinterpret_cast< uint32_t >( nullptr ); // TODO alloc
+            // memcpy module to memory
+            program.text.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
+        }
+
+        if ( strcmp( mod->command, "program.text" ) == 0 ) {
+            program.text.addr = reinterpret_cast< uint32_t >( nullptr ); // TODO alloc
+            // memcpy module to memory
+            program.text.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
+        }
+    } );
+
+    mem::init();
+
+
+    syscall::init();
+
+    puts( "\nInitialization of Thingy finished." );
+    puts( "===============================================================================" );
+
+    int ret = program.start();
+
+    puts( "===============================================================================" );
+
+    printf( "Program finished with value: %d\n", ret );
 
     // TODO page fault? *(reinterpret_cast< int * >( 0x1000 ) ) = 42;
 

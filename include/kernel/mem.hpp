@@ -41,6 +41,10 @@ namespace kernel::mem {
 
 			static page_directory * create();
 		};
+
+		struct page {
+            static constexpr size_t size = 4096;
+        };
     } // namespace paging
 
 
@@ -103,6 +107,6 @@ namespace kernel::mem {
         static void free( void * ptr );
     };
 
-    void init( size_t mem_size );
+    void init();
 
 } // namespace kernel::mem

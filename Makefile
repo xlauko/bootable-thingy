@@ -72,16 +72,16 @@ test: $(ISO)
 debug: $(ISO)
 	qemu-system-i386 -S -s -serial mon:stdio -cdrom $(ISO)
 
-$(USER): program.text.bin program.data.bin
+$(USER): data/program.text data/program.data
 
-program.text.bin: program.elf
+data/program.text: data/program.elf
 	objcopy -I elf32-i386 -O binary -j .text -S $< $@
 
-program.data.bin: program.elf
+data/program.data: data/program.elf
 	objcopy -I elf32-i386 -O binary -j .data -S $< $@
 
 # compiler-rt libc
-program.elf: data/program.o
+data/program.elf: data/program.o
 	$(LD) -o $@ -n -T data/linkscript $(CFLAGS) -O2 -lgcc $(LDFLAGS) $^
 
 data/program.o: data/program.c

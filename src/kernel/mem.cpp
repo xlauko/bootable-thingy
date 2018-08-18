@@ -138,6 +138,7 @@ namespace kernel::mem {
 
     void * fmalloc( size_t size ) {
         auto res = reinterpret_cast< void * >( placement_addr );
+        // TODO do not rewrite multiboot data
         memset( res, 0, size );
         placement_addr += size;
         return res;
@@ -320,7 +321,7 @@ namespace kernel::mem {
         internal::free( this, ptr );
     }
 
-    void init( size_t mem_size ) {
+    void init() {
         heap::init();
 
         paging::kernel_page_dir = page_directory::create();

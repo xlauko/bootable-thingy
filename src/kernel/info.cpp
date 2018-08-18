@@ -47,11 +47,4 @@ memory_info info::mem() const {
     return mem_info;
 }
 
-void info::print() const {
-    basic_memory_information * bmi = nullptr;
-    for ( auto item = begin(); item->type != information_type::end; item = next( item ) )
-        if ( item->type == information_type::basic_memory )
-            bmi = reinterpret_cast< basic_memory_information * >( item );
-}
-
 } // namespace multiboot

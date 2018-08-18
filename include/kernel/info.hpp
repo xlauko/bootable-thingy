@@ -12,7 +12,7 @@ namespace multiboot {
         end              = 0,
         command_line     = 1,
         loader_name      = 2,
-        modules          = 3,
+        module           = 3,
         basic_memory     = 4,
         boot_device      = 5,
         memory_map       = 6,
@@ -28,14 +28,12 @@ namespace multiboot {
         network          = 16,
     };
 
-    namespace {
-        struct information_item {
-            information_type type;
-            uint32_t size;
-        };
+    struct information_item {
+        information_type type;
+        uint32_t size;
+    };
 
-        struct information_list {};
-    }
+    struct information_list {};
 
     information_item * next( information_item * item );
 
@@ -50,11 +48,8 @@ namespace multiboot {
         {};
 
         information_item * begin() const;
-        information_item * end() const;
 
         memory_info mem() const;
-
-        void print() const;
 
         template< typename Fn >
         void yield( Fn fn ) const {
@@ -70,9 +65,8 @@ namespace multiboot {
             } );
         }
 
-
     private:
-        information_list * list;
+        const information_list * list;
     };
 
 
