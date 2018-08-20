@@ -115,6 +115,12 @@ namespace kernel::mem {
 
         static void * alloc( size_t size );
         static void free( void * ptr );
+
+        struct metadata {
+
+        };
+
+        paging::page * pool;
     };
 
     void init( const multiboot::info & info );

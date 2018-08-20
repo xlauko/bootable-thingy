@@ -348,6 +348,7 @@ namespace kernel::mem {
 
     template<>
     void * allocator< kernel_allocator >::alloc( size_t size ) {
+        auto page = palloc.alloc( ( size + sizeof( metadata ) ) / paging::page::size );
 //        return kernel_heap->malloc( size );
     }
 
