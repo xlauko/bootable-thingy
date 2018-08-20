@@ -22,6 +22,17 @@ multiboot_header:
         .short MULTIBOOT_HEADER_TAG_END /* tag id */
         .short 0                        /* flags */
         .long 8                         /* tag size */
+__framebuffer_tag_start:
+        .short MULTIBOOT_HEADER_TAG_FRAMEBUFFER
+        .short MULTIBOOT_HEADER_TAG_OPTIONAL
+        .long __framebuffer_tag_end - __framebuffer_tag_start
+        .long 1024
+        .long 768
+        .long 32
+__framebuffer_tag_end:
+        .short MULTIBOOT_HEADER_TAG_END
+        .short 0
+        .long 8
 multiboot_header_end:
 
 multiboot_entry:

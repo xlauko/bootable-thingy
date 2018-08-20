@@ -1,6 +1,7 @@
 #include <kernel/mem.hpp>
 #include <kernel/dt.hpp>
 #include <kernel/panic.hpp>
+#include <kernel/dev.hpp>
 
 #include <string.h>
 #include <stdio.h>
@@ -84,17 +85,43 @@ namespace kernel::mem {
 
         } );
 
-        // TODO allocate frame buffer
+        uintptr_t video_addr = 0xB8000;
+        size_t video_size = dev::VGA::width * dev::VGA::height * 2;
+        for ( auto fb = video_addr; fb < video_addr + video_size; fb += page::size )
+            fbitmap.set( page::index( fb ) );
 
         // TODO allocate modules
     }
 
-    phys::address_t frame_allocator::alloc() {
-        while ( !fbitmap.get( last ) )
+    void frame_allocator::skip_allocated_frames() {
+        while ( fbitmap.get( last ) )
             last = ( last + 1 ) % num_of_pages;
+    }
+
+    phys::address_t frame_allocator::alloc() {
+        return alloc( 1 );
+    }
+
+    phys::address_t frame_allocator::alloc( size_t num_of_frames ) {
+        bool available = false;
+
+        while ( !available ) {
+            skip_allocated_frames();
+
+            available = true;
+            for ( int i = 0; i < num_of_frames; ++i ) {
+                if ( fbitmap.get( last + i ) ) {
+                    available = false;
+                    last = last + i;
+                    break;
+                }
+            }
+        }
 
         phys::address_t addr = paging::page::size * last;
-        fbitmap.set( last++ );
+
+        for ( int i = 0; i < num_of_frames; ++i )
+            fbitmap.set( last++ );
 
         return addr;
     }
