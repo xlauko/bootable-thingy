@@ -20,7 +20,114 @@ namespace {
 
 namespace kernel::mem {
 
+    namespace {
+        using paging::page_table;
+        using paging::page_directory;
+
+        struct cr3 {
+            static page_table * get() {
+                uint32_t cr3;
+                asm volatile ("movl %%cr3, %%eax" : "=a" (cr3));
+                return reinterpret_cast< page_table * >( cr3 );
+            }
+
+            static void set( page_directory * dir ) {
+                auto addr = reinterpret_cast< uint32_t >( &dir->tables[0] );
+                asm volatile ("movl %%eax, %%cr3" :: "a" (addr));
+            }
+        };
+
+        struct cr0 {
+            static uint32_t get() {
+                uint32_t cr0;
+                asm volatile ("movl %%cr0, %%eax" : "=a" (cr0));
+                return cr0;
+            }
+
+            static void set( uint32_t val ) {
+                asm volatile ("movl %%eax, %%cr0" :: "a" (val));
+            }
+        };
+    }
+
+
+	namespace paging {
+		page_directory * kernel_page_dir;
+
+        page_table * get_table( virt::address_t addr ) {
+            return kernel_page_dir->tables[ ( addr >> 20 ) & ~0x3 ];
+        }
+
+        size_t page_idx( virt::address_t addr ) {
+            return ( addr >> 12 ) & (( 1 << 12 ) - 1 );
+        }
+
+        page_entry & get_page( virt::address_t addr ) {
+            return get_table( addr )->pages[ page_idx( addr ) ];
+        }
+
+        size_t offset( virt::address_t addr ) {
+            return addr & ~0xfff;
+        }
+
+        void switch_page_dir( page_directory * dir ) {
+            cr3::set( dir );
+            cr0::set( cr0::get() | 0x80000000 );
+        }
+
+        void page_fault_handler( registers_t * ) {
+            uint32_t faulting_address;
+            asm volatile( "mov %%cr2, %0" : "=r"( faulting_address ) );
+
+            fprintf( stderr, "Page fault at 0x%x\n", faulting_address );
+            panic();
+        }
+
+		page_table * page_table::create() {
+            page_table * tab = reinterpret_cast< page_table * >( kmalloc_page_aligned( sizeof( page_table ) ) );
+            for ( size_t i = 0; i < page_table::size; i++ ) {
+                tab->pages[ i ].present = 0;
+                tab->pages[ i ].rw = 1;
+            }
+
+            return tab;
+        }
+
+		page_table * page_table::empty() {
+            return reinterpret_cast< page_table * >( 0x00000002 );
+        }
+
+		page_directory * page_directory::create() {
+            auto dir = reinterpret_cast< page_directory * >( kmalloc_page_aligned( sizeof( page_directory ) ) );
+
+            for ( size_t i = 0; i < page_directory::size; i++ )
+                dir->tables[ i ] = page_table::empty();
+
+            return dir;
+        }
+	} // namespace paging
+
+    void identity_map_page( page_directory * dir, virt::address_t virt, phys::address_t phys ) {
+        short id = virt >> 22;
+
+        auto tab = page_table::create();
+        dir->tables[ id ] = reinterpret_cast< page_table * >(
+            reinterpret_cast< uint32_t >( tab ) | 0x3 );
+
+        for ( size_t i = 0; i < page_table::size; i++ ) {
+            tab->pages[ i ].frame = phys >> 12;
+            tab->pages[ i ].present = 1;
+            phys += 4096;
+        }
+    }
+
     frame_allocator falloc;
+
+    void * kmalloc_page_aligned( size_t size ) {
+        if ( size > paging::page::size )
+            panic();
+        return reinterpret_cast< void * >( falloc.alloc().addr );
+    }
 
     namespace {
         static constexpr size_t num_of_pages = 0x4000000;
@@ -146,112 +253,97 @@ namespace kernel::mem {
         palloc.allocator = allocator;
     }
 
+    void page_allocator::map( phys::address_t phys, virt::address_t virt, uint32_t flags ) {
+        using namespace paging;
+
+        auto tab = virt >> 22;
+        auto entry = reinterpret_cast< page_entry * >( tab );
+        if ( !entry->present ) {
+            auto table = page_table::create();
+            kernel_page_dir->tables[ virt >> 22 ] = reinterpret_cast< page_table * >(
+                reinterpret_cast< uint32_t >( table ) | flags );
+        }
+
+        get_page( virt ).raw = phys | flags;
+    }
+
     paging::page page_allocator::alloc( size_t num, bool user ) {
-        find_space( num );
+        using namespace paging;
+        auto addr = find_space( num, user );
+
+        for ( int i = 0; i < num; ++i )
+            if ( user )
+                map( falloc.alloc().addr, addr + i * page::size, user_flags );
+            else
+                map( falloc.alloc().addr, addr + i * page::size, kernel_flags );
+
+        return { addr };
     }
 
     void page_allocator::free( paging::page page ) {
 
     }
 
-    paging::page page_allocator::find_space( size_t num ) {
+    virt::address_t page_allocator::skip_used_pages( virt::address_t addr ) {
+        using namespace paging;
 
-    }
+        while ( true ) {
+            auto tab = get_table( addr );
+            if ( reinterpret_cast< page_entry * >( tab )->present ) {
+                for ( int i = page_idx( addr ); i < page_table::size; ++i ) {
+                    auto page = tab->pages[ i ];
+                    if ( !page.present )
+                        return addr + i * page::size;
+                }
 
-	constexpr size_t index_from_bit( size_t b ) { return b / (8 * 4 ); }
-	constexpr size_t offset_from_bit( size_t b ) { return b % (8 * 4 ); }
-
-    namespace {
-        using paging::page_table;
-        using paging::page_directory;
-
-        struct cr3 {
-            static page_table * get() {
-                uint32_t cr3;
-                asm volatile ("movl %%cr3, %%eax" : "=a" (cr3));
-                return reinterpret_cast< page_table * >( cr3 );
+                addr = ( addr + page_table::size * page::size );
+            } else {
+                return addr;
             }
-
-            static void set( page_directory * dir ) {
-                auto addr = reinterpret_cast< uint32_t >( &dir->tables[0] );
-                asm volatile ("movl %%eax, %%cr3" :: "a" (addr));
-            }
-        };
-
-        struct cr0 {
-            static uint32_t get() {
-                uint32_t cr0;
-                asm volatile ("movl %%cr0, %%eax" : "=a" (cr0));
-                return cr0;
-            }
-
-            static void set( uint32_t val ) {
-                asm volatile ("movl %%eax, %%cr0" :: "a" (val));
-            }
-        };
-    }
-
-
-	namespace paging {
-		page_directory * kernel_page_dir;
-
-        void switch_page_dir( page_directory * dir ) {
-            cr3::set( dir );
-            cr0::set( cr0::get() | 0x80000000 );
-        }
-
-        void page_fault_handler( registers_t * ) {
-            uint32_t faulting_address;
-            asm volatile( "mov %%cr2, %0" : "=r"( faulting_address ) );
-
-            fprintf( stderr, "Page fault at 0x%x\n", faulting_address );
-            panic();
-        }
-
-		page_table * page_table::create() {
-            page_table * tab = reinterpret_cast< page_table * >( kmalloc_page_aligned( sizeof( page_table ) ) );
-
-            for ( size_t i = 0; i < page_table::size; i++ ) {
-                tab->pages[ i ].present = 0;
-                tab->pages[ i ].rw = 1;
-            }
-
-            return tab;
-        }
-
-		page_table * page_table::empty() {
-            return reinterpret_cast< page_table * >( 0x00000002 );
-        }
-
-		page_directory * page_directory::create() {
-            auto dir = reinterpret_cast< page_directory * >( kmalloc_page_aligned( sizeof( page_directory ) ) );
-
-            for ( size_t i = 0; i < page_directory::size; i++ )
-                dir->tables[ i ] = page_table::empty();
-
-            return dir;
-        }
-	} // namespace paging
-
-    void identity_map_page( page_directory * dir, virt::address_t virt, phys::address_t phys ) {
-        short id = virt >> 22;
-
-        auto tab = page_table::create();
-
-        dir->tables[ id ] = reinterpret_cast< page_table * >(
-            reinterpret_cast< uint32_t >( tab ) | 3 );
-
-        for ( size_t i = 0; i < page_table::size; i++ ) {
-            tab->pages[ i ].frame = phys >> 12;
-            tab->pages[ i ].present = 1;
-            phys += 4096;
         }
     }
 
-    void * kmalloc_page_aligned( size_t size ) {
-        if ( size > paging::page::size )
-            panic();
-        return reinterpret_cast< void * >( falloc.alloc().addr );
+    size_t page_allocator::unused_space_from_addr( virt::address_t addr, bool user, size_t bound ) {
+        using namespace paging;
+        size_t free_pages = 0;
+
+        while ( true ) {
+            if ( free_pages > bound )
+                return free_pages;
+            auto tab = get_table( addr );
+            if ( !reinterpret_cast< page_entry * >( tab )->present ) {
+                // assume addr is page_table aligned
+                free_pages += page_table::size;
+                addr += page_table::size * page::size;
+            } else {
+                for ( int i = page_idx( addr ); i < page_table::size; ++i ) {
+                    auto page = tab->pages[ i ];
+                    if ( !page.present && page.user == user )
+                        free_pages++;
+                    else
+                        return free_pages;
+                }
+
+                addr += ( page_table::size - page_idx( addr ) ) * page::size;
+            }
+        }
+
+        return free_pages;
+    }
+
+    virt::address_t page_allocator::find_space( size_t num, bool user ) {
+        using namespace paging;
+
+        virt::address_t addr = 0;
+        size_t free_pages = 0;
+
+        while ( free_pages < num ) {
+            addr += free_pages * page::size;
+            addr = skip_used_pages( addr );
+            free_pages = unused_space_from_addr( addr, user, num );
+        }
+
+        return addr;
     }
 
     template<>
@@ -274,22 +366,24 @@ namespace kernel::mem {
 //        return user_heap->free( ptr );
     }
 
+    phys::address_t virt_2_phys( virt::address_t addr ) {
+        return ( paging::get_page( addr ).raw & ~0xfff ) | ( addr & 0xfff );
+    }
+
     void init( const multiboot::info & info ) {
+        using namespace paging;
         frame_allocator::init( info );
 
         paging::kernel_page_dir = page_directory::create();
 
-        for ( size_t i = 0; i < num_of_pages; i += 1024 * 4096 )
+        for ( size_t i = 0; i < num_of_pages; i += page_table::size * page::size )
             identity_map_page( paging::kernel_page_dir, i, i );
 
         page_allocator::init( &falloc );
 
-        /*heap::init();
-
-
-
+        // TODO heap::init();
         isrs::install_handler( 14, paging::page_fault_handler );
 
-        paging::switch_page_dir( paging::kernel_page_dir );*/
+        paging::switch_page_dir( paging::kernel_page_dir );
     }
 } // namespace kernel::mem

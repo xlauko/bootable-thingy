@@ -60,6 +60,7 @@ namespace kernel::mem {
 
             virt::address_t addr;
         };
+
     } // namespace paging
 
     struct frame_allocator {
@@ -87,9 +88,16 @@ namespace kernel::mem {
         paging::page alloc( size_t num, bool user = false );
         void free( paging::page page );
 
-        paging::page find_space( size_t num );
+        virt::address_t skip_used_pages( virt::address_t addr );
+        size_t unused_space_from_addr( virt::address_t virt, bool user, size_t bound );
+        virt::address_t find_space( size_t num, bool user );
+
+        void map( virt::address_t virt, phys::address_t phys, uint32_t flags );
 
         static void init( frame_allocator * allocator );
+
+        static constexpr uint32_t kernel_flags = 0x103;
+        static constexpr uint32_t user_flags = 0x07;
 
         frame_allocator * allocator;
     };
