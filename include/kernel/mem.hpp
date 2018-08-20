@@ -18,26 +18,6 @@ namespace kernel::mem {
         using address_t = uint32_t;
     }
 
-    struct frame_allocator {
-        struct frame {
-            phys::address_t addr;
-            size_t size;
-        };
-
-        frame alloc();
-        frame alloc( size_t num_of_frames );
-
-        void skip_allocated_frames();
-
-        void free( frame );
-
-        static void init( const multiboot::info & info );
-
-        size_t last = 0;
-    };
-
-    extern frame_allocator falloc;
-
     namespace paging {
 
         struct page_entry {
@@ -74,60 +54,49 @@ namespace kernel::mem {
 		struct page {
             static constexpr size_t size = 4096;
 
-            static constexpr size_t index( phys::address_t addr ) {
+            static constexpr size_t index( virt::address_t addr ) {
                 return addr / size;
             }
+
+            virt::address_t addr;
         };
     } // namespace paging
 
-
-    struct heap {
-
-        static constexpr uint32_t magic = 0x04206969;
-        static constexpr uint32_t magic2 = 0xDEADBEEF;
-
-        static constexpr size_t kernel_heap_size = 0xFFFFF;
-        static constexpr uint32_t kernel_heap_end = 0xFFFFDEAD;
-
-        struct header {
-            uint32_t magic;
-            bool free;
-            uint32_t size;
-            uint32_t magic2;
+    struct frame_allocator {
+        struct frame {
+            phys::address_t addr;
+            size_t size;
         };
 
-        struct footer {
-            uint32_t magic;
-            uint32_t size;
-            uint32_t magic2;
-        };
+        frame alloc();
+        frame alloc( size_t num );
 
-        void * malloc( size_t size );
-        void free( void * ptr );
+        void skip_allocated_frames();
 
-        void * umalloc( size_t size );
-        void ufree( void * ptr );
+        void free( frame );
 
-        static void init();
+        static void init( const multiboot::info & info );
 
-        header * get_header();
-        footer * get_footer();
-
-        size_t size();
-        size_t total_size();
-
-        bool can_fit( size_t size );
-
-        heap * next();
-        heap * prev();
-
-        void * memory();
-
-        bool check();
+        size_t last = 0;
     };
 
-    void * fmalloc( size_t size );
-    void * kmalloc_aligned( size_t size );
+    extern frame_allocator falloc;
+
+    struct page_allocator {
+
+        paging::page alloc( size_t num, bool user = false );
+        void free( paging::page page );
+
+        paging::page find_space( size_t num );
+
+        static void init( frame_allocator * allocator );
+
+        frame_allocator * allocator;
+    };
+
+    extern page_allocator palloc;
+
+    void * kmalloc_page_aligned( size_t size );
 
     struct kernel_allocator {};
     struct user_allocator {};
