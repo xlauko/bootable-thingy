@@ -50,7 +50,6 @@ namespace kernel::mem {
         };
     }
 
-
 	namespace paging {
 		page_directory * kernel_page_dir;
 
@@ -106,6 +105,10 @@ namespace kernel::mem {
             return dir;
         }
 	} // namespace paging
+
+    phys::address_t virt_2_phys( virt::address_t addr ) {
+        return ( paging::get_page( addr ).raw & ~0xfff ) | ( addr & 0xfff );
+    }
 
     void identity_map_page( page_directory * dir, virt::address_t virt, phys::address_t phys ) {
         short id = virt >> 22;
@@ -277,11 +280,20 @@ namespace kernel::mem {
             else
                 map( falloc.alloc().addr, addr + i * page::size, kernel_flags );
 
-        return { addr };
+        return { addr, num };
+    }
+
+    void page_allocator::unmap( virt::address_t addr ) {
+        reinterpret_cast< paging::page_entry * >( paging::get_table( addr ) )->present = 0;
     }
 
     void page_allocator::free( paging::page page ) {
-
+        for ( int i = 0; i < page.num; ++i ) {
+            auto virt = page.addr + i * paging::page::size;
+            auto phys = virt_2_phys( virt );
+            unmap( virt );
+            falloc.free( { phys, 1 } );
+        }
     }
 
     virt::address_t page_allocator::skip_used_pages( virt::address_t addr ) {
@@ -346,10 +358,42 @@ namespace kernel::mem {
         return addr;
     }
 
+    allocator< kernel_allocator >::page_list kernel_page_list;
+    allocator< user_allocator >::page_list user_page_list;
+
+    template< typename page_list >
+    typename page_list::node * get_page_node( page_list list, size_t size ) {
+        auto node = list.head;
+        while ( node ) {
+            if ( node->available > size )
+                return node;
+        }
+
+        return nullptr;
+    }
+
     template<>
     void * allocator< kernel_allocator >::alloc( size_t size ) {
-        auto page = palloc.alloc( ( size + sizeof( metadata ) ) / paging::page::size );
-//        return kernel_heap->malloc( size );
+        auto node = get_page_node( kernel_page_list, size );
+
+        if ( !node ) {
+            page_list::node new_node;
+            new_node.page = palloc.alloc( ( size ) / paging::page::size );
+            new_node.available = paging::page::size - sizeof( page_list::node );
+            new_node.continuous = ( size ) / paging::page::size;
+
+            auto addr = reinterpret_cast< page_list::node * >( virt_2_phys( new_node.page.addr ) );
+            *( addr ) = new_node;
+            node = addr;
+
+            if ( kernel_page_list.head )
+                node->next = kernel_page_list.head;
+            kernel_page_list.head = node;
+        }
+
+        auto ret = reinterpret_cast< uintptr_t >( node ) + paging::page::size - node->available;
+        node->available -= size;
+        return reinterpret_cast< void * >( ret );
     }
 
     template<>
@@ -367,10 +411,6 @@ namespace kernel::mem {
 //        return user_heap->free( ptr );
     }
 
-    phys::address_t virt_2_phys( virt::address_t addr ) {
-        return ( paging::get_page( addr ).raw & ~0xfff ) | ( addr & 0xfff );
-    }
-
     void init( const multiboot::info & info ) {
         using namespace paging;
         frame_allocator::init( info );
@@ -382,7 +422,9 @@ namespace kernel::mem {
 
         page_allocator::init( &falloc );
 
-        // TODO heap::init();
+        kernel_page_list.head = nullptr;
+        user_page_list.head = nullptr;
+
         isrs::install_handler( 14, paging::page_fault_handler );
 
         paging::switch_page_dir( paging::kernel_page_dir );

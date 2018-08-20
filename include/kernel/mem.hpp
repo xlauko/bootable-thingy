@@ -59,6 +59,7 @@ namespace kernel::mem {
             }
 
             virt::address_t addr;
+            size_t num;
         };
 
     } // namespace paging
@@ -93,6 +94,7 @@ namespace kernel::mem {
         virt::address_t find_space( size_t num, bool user );
 
         void map( virt::address_t virt, phys::address_t phys, uint32_t flags );
+        void unmap( virt::address_t virt );
 
         static void init( frame_allocator * allocator );
 
@@ -113,14 +115,19 @@ namespace kernel::mem {
     struct allocator {
         using tag = __tag;
 
-        static void * alloc( size_t size );
-        static void free( void * ptr );
+        void * alloc( size_t size );
+        void free( void * ptr );
 
-        struct metadata {
+        struct page_list {
+            struct node {
+                node * next;
+                paging::page page;
+                size_t available;
+                size_t continuous;
+            };
 
+            node * head;
         };
-
-        paging::page * pool;
     };
 
     void init( const multiboot::info & info );
