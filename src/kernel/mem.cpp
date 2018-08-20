@@ -5,7 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
-extern "C" uint32_t kernel_end;
+extern "C" char __kernel_start;
+extern "C" char __kernel_end;
 
 namespace {
 
@@ -18,7 +19,92 @@ namespace {
 
 namespace kernel::mem {
 
-    uint32_t * frames;
+    frame_allocator falloc;
+
+    namespace {
+        static constexpr size_t num_of_pages = 0x4000000;
+
+        struct frame_bitmap {
+
+            static constexpr size_t size = num_of_pages / 8;
+
+            size_t offset( size_t idx ) {
+                return 7 - ( idx % 8 );
+            }
+
+            bool get( size_t idx ) {
+                return bitmap[ idx / 8 ] & ( 1 << offset( idx ) );
+            }
+
+            void set( size_t idx ) {
+                bitmap[ idx / 8 ] = bitmap[ idx / 8 ] | ( 1 << offset( idx ) );
+            }
+
+            void reset( size_t idx ) {
+                bitmap[ idx / 8 ] = bitmap[ idx / 8 ] & ~( 1 << offset( idx ) );
+            }
+
+            char bitmap [ size ];
+        };
+
+        frame_bitmap fbitmap;
+    }
+
+    void frame_allocator::init( const multiboot::info & info ) {
+        using namespace mem::paging;
+        memset( fbitmap.bitmap, 0, frame_bitmap::size );
+
+        auto kernel_start = reinterpret_cast< uint32_t >( &__kernel_start );
+        auto kernel_end = reinterpret_cast< uint32_t >( &__kernel_end );
+
+        for ( size_t addr = kernel_start; addr < kernel_end; addr += page::size ) {
+            fbitmap.set( page::index( addr ) );
+        }
+
+        info.yield( multiboot::information_type::memory_map, [&] ( const auto & item ) {
+            auto mmap = reinterpret_cast< multiboot_tag_mmap * >( item );
+
+            auto next_entry = [mmap] ( const auto & entry ) {
+                return reinterpret_cast< multiboot_memory_map_t * >(
+                       reinterpret_cast< uintptr_t >( entry ) + mmap->entry_size );
+            };
+
+            auto is_end = [mmap] ( const auto & entry ) {
+                auto mmap_end = reinterpret_cast< uintptr_t >( mmap ) + mmap->size;
+                return reinterpret_cast< uintptr_t >( entry ) >= mmap_end;
+            };
+
+            for ( auto entry = mmap->entries; !is_end( entry ); entry = next_entry( entry ) ) {
+                if ( entry->type != MULTIBOOT_MEMORY_AVAILABLE ) {
+                    size_t size = entry->addr + entry->len;
+                    for ( size_t addr = entry->addr; addr < size; addr += page::size )
+                        fbitmap.set( page::index( addr ) );
+                }
+            }
+
+        } );
+
+        // TODO allocate frame buffer
+
+        // TODO allocate modules
+    }
+
+    phys::address_t frame_allocator::alloc() {
+        while ( !fbitmap.get( last ) )
+            last = ( last + 1 ) % num_of_pages;
+
+        phys::address_t addr = paging::page::size * last;
+        fbitmap.set( last++ );
+
+        return addr;
+    }
+
+    void frame_allocator::free( phys::address_t addr ) {
+        if ( !fbitmap.get( paging::page::index( addr ) ) )
+            panic();
+
+        fbitmap.reset( paging::page::index( addr ) );
+    }
 
 	constexpr size_t index_from_bit( size_t b ) { return b / (8 * 4 ); }
 	constexpr size_t offset_from_bit( size_t b ) { return b % (8 * 4 ); }
@@ -134,7 +220,7 @@ namespace kernel::mem {
     }
 
 
-    uintptr_t placement_addr = reinterpret_cast< uintptr_t >( &kernel_end );
+    uintptr_t placement_addr = reinterpret_cast< uintptr_t >( &__kernel_end );
 
     void * fmalloc( size_t size ) {
         auto res = reinterpret_cast< void * >( placement_addr );
@@ -321,8 +407,9 @@ namespace kernel::mem {
         internal::free( this, ptr );
     }
 
-    void init() {
-        heap::init();
+    void init( const multiboot::info & info ) {
+        frame_allocator::init( info );
+        /*heap::init();
 
         paging::kernel_page_dir = page_directory::create();
 
@@ -331,6 +418,6 @@ namespace kernel::mem {
 
         isrs::install_handler( 14, paging::page_fault_handler );
 
-        paging::switch_page_dir( paging::kernel_page_dir );
+        paging::switch_page_dir( paging::kernel_page_dir );*/
     }
 } // namespace kernel::mem

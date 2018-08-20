@@ -43,9 +43,13 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
 
+    mem::init( info );
+
+    syscall::init();
+
     user::executable program;
 
-    info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
+    /*info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
         using namespace mem::paging;
 
         auto mod = reinterpret_cast< multiboot::modules_information * >( item );
@@ -60,12 +64,7 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
             // memcpy module to memory
             program.text.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
         }
-    } );
-
-    mem::init();
-
-
-    syscall::init();
+    } );*/
 
     puts( "\nInitialization of Thingy finished." );
     puts( "===============================================================================" );

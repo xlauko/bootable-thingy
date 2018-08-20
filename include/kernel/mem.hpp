@@ -4,9 +4,31 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include <kernel/info.hpp>
+
 #define ALIGNED __attribute__((aligned(4096)))
 
 namespace kernel::mem {
+
+    namespace phys {
+	    using address_t = uint32_t;
+    }
+
+    namespace virt {
+        using address_t = uint32_t;
+    }
+
+    struct frame_allocator {
+
+        phys::address_t alloc();
+        void free( phys::address_t );
+
+        static void init( const multiboot::info & info );
+
+        size_t last = 0;
+    };
+
+    extern frame_allocator falloc;
 
     namespace paging {
 
@@ -33,7 +55,6 @@ namespace kernel::mem {
 			static page_table * empty();
 		};
 
-		using address_t = uint32_t;
 
 		struct page_directory {
 			static constexpr size_t size = 1024;
@@ -44,6 +65,10 @@ namespace kernel::mem {
 
 		struct page {
             static constexpr size_t size = 4096;
+
+            static constexpr size_t index( phys::address_t addr ) {
+                return addr / size;
+            }
         };
     } // namespace paging
 
@@ -107,6 +132,6 @@ namespace kernel::mem {
         static void free( void * ptr );
     };
 
-    void init();
+    void init( const multiboot::info & info );
 
 } // namespace kernel::mem

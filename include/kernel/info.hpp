@@ -112,6 +112,8 @@ namespace multiboot {
 
         uint32_t entry_size;
         uint32_t entry_version;
+
+        multiboot_memory_map_t * entries;
     };
 
     struct layout {
