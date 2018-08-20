@@ -90,14 +90,6 @@ namespace kernel::mem {
         for ( auto fb = video_addr; fb < video_addr + video_size; fb += page::size )
             fbitmap.set( page::index( fb ) );
 
-        falloc.alloc( 10000 );
-        int s = 10;
-        auto frame = falloc.alloc( s );
-        for ( int i = -5; i < s + 5; ++i )
-            printf( "frame %p, taken: %d\n", frame.addr + i, fbitmap.get( page::index( frame.addr ) + i ) );
-        falloc.free( frame );
-        for ( int i = -5; i < s + 5; ++i )
-            printf( "frame %p, taken: %d\n", frame.addr + i, fbitmap.get( page::index( frame.addr ) + i ) );
         // TODO allocate modules
     }
 
