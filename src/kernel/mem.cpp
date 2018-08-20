@@ -90,7 +90,12 @@ namespace kernel::mem {
         for ( auto fb = video_addr; fb < video_addr + video_size; fb += page::size )
             fbitmap.set( page::index( fb ) );
 
-        // TODO allocate modules
+        info.yield( multiboot::information_type::module, [] ( const auto & item ) {
+            using namespace mem::paging;
+            auto mod = reinterpret_cast< multiboot::modules_information * >( item );
+            for ( size_t addr = mod->start; addr < mod->end; addr += page::size )
+                fbitmap.set( page::index( addr ) );
+        } );
     }
 
     void frame_allocator::skip_allocated_frames() {
