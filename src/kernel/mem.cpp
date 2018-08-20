@@ -90,6 +90,14 @@ namespace kernel::mem {
         for ( auto fb = video_addr; fb < video_addr + video_size; fb += page::size )
             fbitmap.set( page::index( fb ) );
 
+        falloc.alloc( 10000 );
+        int s = 10;
+        auto frame = falloc.alloc( s );
+        for ( int i = -5; i < s + 5; ++i )
+            printf( "frame %p, taken: %d\n", frame.addr + i, fbitmap.get( page::index( frame.addr ) + i ) );
+        falloc.free( frame );
+        for ( int i = -5; i < s + 5; ++i )
+            printf( "frame %p, taken: %d\n", frame.addr + i, fbitmap.get( page::index( frame.addr ) + i ) );
         // TODO allocate modules
     }
 
@@ -98,11 +106,11 @@ namespace kernel::mem {
             last = ( last + 1 ) % num_of_pages;
     }
 
-    phys::address_t frame_allocator::alloc() {
+    frame_allocator::frame frame_allocator::alloc() {
         return alloc( 1 );
     }
 
-    phys::address_t frame_allocator::alloc( size_t num_of_frames ) {
+    frame_allocator::frame frame_allocator::alloc( size_t num_of_frames ) {
         bool available = false;
 
         while ( !available ) {
@@ -110,7 +118,7 @@ namespace kernel::mem {
 
             available = true;
             for ( int i = 0; i < num_of_frames; ++i ) {
-                if ( fbitmap.get( last + i ) ) {
+                if ( fbitmap.get( ( last + i ) % num_of_pages ) ) {
                     available = false;
                     last = last + i;
                     break;
@@ -121,16 +129,18 @@ namespace kernel::mem {
         phys::address_t addr = paging::page::size * last;
 
         for ( int i = 0; i < num_of_frames; ++i )
-            fbitmap.set( last++ );
+            fbitmap.set( last + i );
+        skip_allocated_frames();
 
-        return addr;
+        return { addr, num_of_frames };
     }
 
-    void frame_allocator::free( phys::address_t addr ) {
-        if ( !fbitmap.get( paging::page::index( addr ) ) )
-            panic();
-
-        fbitmap.reset( paging::page::index( addr ) );
+    void frame_allocator::free( frame_allocator::frame frame ) {
+        for ( int i = 0; i < frame.size; ++i ) {
+            if ( !fbitmap.get( paging::page::index( frame.addr ) + i ) )
+                panic();
+            fbitmap.reset( paging::page::index( frame.addr ) + i );
+        }
     }
 
 	constexpr size_t index_from_bit( size_t b ) { return b / (8 * 4 ); }

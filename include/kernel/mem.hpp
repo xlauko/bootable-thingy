@@ -19,12 +19,17 @@ namespace kernel::mem {
     }
 
     struct frame_allocator {
-        phys::address_t alloc();
-        phys::address_t alloc( size_t num_of_frames );
+        struct frame {
+            phys::address_t addr;
+            size_t size;
+        };
+
+        frame alloc();
+        frame alloc( size_t num_of_frames );
 
         void skip_allocated_frames();
 
-        void free( phys::address_t );
+        void free( frame );
 
         static void init( const multiboot::info & info );
 
