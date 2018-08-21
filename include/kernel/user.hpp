@@ -1,9 +1,12 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 namespace kernel {
     namespace user {
+
+        static constexpr size_t stack_size = 0x4000;
 
         struct executable {
             struct section {

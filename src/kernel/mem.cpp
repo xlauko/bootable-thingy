@@ -18,7 +18,16 @@ namespace {
 
 } // anonymous namespace
 
+extern "C" {
+    uintptr_t kernel_stack;
+}
+
 namespace kernel::mem {
+
+
+    void set_kernel_stack( uintptr_t stack ) {
+        kernel_stack = stack;
+    }
 
     namespace {
         using paging::page_table;
@@ -105,10 +114,6 @@ namespace kernel::mem {
             return dir;
         }
 	} // namespace paging
-
-    phys::address_t virt_2_phys( virt::address_t addr ) {
-        return ( paging::get_page( addr ).raw & ~0xfff ) | ( addr & 0xfff );
-    }
 
     void identity_map_page( page_directory * dir, virt::address_t virt, phys::address_t phys ) {
         short id = virt >> 22;
@@ -329,7 +334,7 @@ namespace kernel::mem {
             } else {
                 for ( int i = page_idx( addr ); i < page_table::size; ++i ) {
                     auto page = tab->pages[ i ];
-                    if ( !page.present && page.user == user )
+                    if ( !page.present )
                         free_pages++;
                     else
                         return free_pages;

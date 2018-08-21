@@ -18,6 +18,8 @@ namespace kernel::mem {
         using address_t = uint32_t;
     }
 
+    void set_kernel_stack( uintptr_t stack );
+
     namespace paging {
 
         struct page_entry {
@@ -62,7 +64,13 @@ namespace kernel::mem {
             size_t num;
         };
 
+        page_entry & get_page( virt::address_t addr );
+
     } // namespace paging
+
+    inline phys::address_t virt_2_phys( virt::address_t addr ) {
+        return ( paging::get_page( addr ).raw & ~0xfff ) | ( addr & 0xfff );
+    }
 
     struct frame_allocator {
         struct frame {

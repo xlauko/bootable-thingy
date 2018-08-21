@@ -5,41 +5,63 @@
 
 #include <kernel/panic.hpp>
 #include <kernel/ioport.hpp>
+#include <kernel/mem.hpp>
 
 using namespace kernel;
 
 /* GDT function */
 
-extern "C" void __gdt_flush( void * gdt );
+extern "C" int __gdt_flush( size_t size, void * gdt );
+extern "C" void __tss_flush();
 
-extern "C" {
-    gdt::item gdtable[ gdt::size ];
-    gdt gdt_ptr;
-}
+static size_t gdt_size = 6 * 2;
+uint32_t gdt[ 12 ];
 
-template< size_t idx >
-void gdt::set( uint32_t base, uint32_t limit, uint8_t access, uint8_t gran ) {
-    auto &item = gdtable[ idx ];
+uint32_t tss[ 26 ];
 
-    item.base_low =     (base & 0xFFFF);
-    item.base_middle =  (base >> 16) & 0xFF;
-    item.base_high =    (base >> 24) & 0xFF;
-    item.limit_low =    (limit & 0xFFFF);
-    item.granularity =  (limit >> 16) & 0X0F;
-    item.granularity |= (gran & 0xF0);
-    item.access = access;
-}
+void gdt_init() {
 
-void gdt::init() {
-    gdt_ptr.limit = ( sizeof( gdt::item ) * gdt::size ) - 1;
-    gdt_ptr.base = reinterpret_cast< uint32_t >( &gdtable );
+    gdt_size *= 4;
+    --gdt_size;
 
-    gdt_ptr.set< 0 >( 0, 0, 0, 0 );                 // null segment
-    gdt_ptr.set< 1 >( 0, 0xFFFFFFFF, 0x9A, 0xCF );  // code segment
-    gdt_ptr.set< 2 >( 0, 0xFFFFFFFF, 0x92, 0xCF );  // data segment
-    gdt_ptr.set< 3 >( 0, 0xFFFFFFFF, 0xFA, 0xCF );  // user segment
-    gdt_ptr.set< 4 >( 0, 0xFFFFFFFF, 0xF2, 0xCF );  // user data
-     __gdt_flush( &gdt_ptr );
+    // Null descriptor
+    gdt[ 0 ] = 0x0000'0000;
+    gdt[ 1 ] = 0x0000'0000;
+
+    // Kernel code descriptor
+    gdt[ 2 ] = 0x0000'ffff;
+    gdt[ 3 ] = 0x00cf'9a00;
+
+    // Kernel data descriptor
+    gdt[ 4 ] = 0x0000'ffff;
+    gdt[ 5 ] = 0x00cf'9200;
+
+    // User code descriptor
+    gdt[ 6 ] = 0x0000'ffff;
+    gdt[ 7 ] = 0x00cf'fa00;
+
+    // User data descriptor
+    gdt[ 8 ] = 0x0000'ffff;
+    gdt[ 9 ] = 0x00cf'f200;
+
+    memset( tss, 0, sizeof( uint32_t ) * 26 );
+
+    tss[ 1 ] = 0x0;// ESP0
+    tss[ 2 ] = 0x10; // SS0
+    tss[ 19 ] = 0x0b;
+    tss[ 18 ] = tss[ 20 ] = tss[ 21 ] = tss[ 22 ] = tss[ 23 ] = 0x13;
+    tss[ 25 ] = 0x0068'0000; // IOPB
+
+    // TSS descriptor
+    auto tssi = reinterpret_cast< uint32_t >( tss );
+    gdt[ 10 ] = 0x0000'0068;
+    gdt[ 11 ] = 0x0000'e900;
+    gdt[ 10 ] |= tssi << 16;
+    gdt[ 11 ] |= ( tssi >> 16 ) & 0xFF;
+    gdt[ 11 ] |= tssi & 0xFF00'0000;
+
+    __gdt_flush( gdt_size, gdt );
+    __tss_flush();
 }
 
 /* IDT functions */
@@ -297,7 +319,7 @@ extern "C" void irq_default_handler( registers_t *regs ) {
 namespace kernel::dt {
 
     void init() {
-        gdt::init();
+        gdt_init();
         idt::init();
         isrs::init();
         irq::init();

@@ -37,34 +37,49 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     auto info = multiboot::info( addr );
 
+    init_devices( &ser, &kvga );
+    init_pdclib( &ser );
+
     kernel::dt::init();
 
     mem::init( info );
-
-    init_devices( &ser, &kvga );
-    init_pdclib( &ser );
 
     syscall::init();
 
     user::executable program;
 
-    *( (int *)0xffasdas ) = 10;
-    /*info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
+    info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
         using namespace mem::paging;
 
         auto mod = reinterpret_cast< multiboot::modules_information * >( item );
-        if ( strcmp( mod->command, "program.data" ) == 0 ) {
-            program.text.addr = reinterpret_cast< uint32_t >( nullptr ); // TODO alloc
-            // memcpy module to memory
-            program.text.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
-        }
 
-        if ( strcmp( mod->command, "program.text" ) == 0 ) {
-            program.text.addr = reinterpret_cast< uint32_t >( nullptr ); // TODO alloc
-            // memcpy module to memory
+        auto begin = reinterpret_cast< const char * >( mod->start );
+        auto end = reinterpret_cast< const char * >( mod->end );
+
+    printf( "\nLoading module '%s' with content:\n", mod->command );
+    puts( "===============================================================================" );
+
+        if ( strcmp( mod->command, "program.data" ) == 0 ) {
+            program.data.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
+            program.data.addr = mem::virt_2_phys( mem::palloc.alloc( program.text.size ).addr );
+            memcpy( ( void * )program.data.addr, begin, end - begin );
+
+
+
+            puts( "binary module" );
+        } else if ( strcmp( mod->command, "program.text" ) == 0 ) {
             program.text.size = ( mod->end - mod->start  + page::size - 1 ) / page::size;
+            program.text.addr = mem::virt_2_phys( mem::palloc.alloc( program.text.size ).addr );
+            memcpy( ( void * )program.text.addr, begin, end - begin );
+            printf("%02X\n", * ( unsigned * )begin );
+            printf("%02X\n", * ( unsigned * )program.text.addr );
+            puts( "binary module" );
+        } else {
+            for ( auto it = begin; it < end; ++it ) {
+                putchar( *it );
+            }
         }
-    } );*/
+    } );
 
     puts( "\nInitialization of Thingy finished." );
     puts( "===============================================================================" );
@@ -73,9 +88,7 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     puts( "===============================================================================" );
 
-    printf( "Program finished with value: %d\n", ret );
-
-    // TODO page fault? *(reinterpret_cast< int * >( 0x1000 ) ) = 42;
+    printf( "Program finished with value: %p\n", ret );
 
     // TODO press key to irq
     /*irq::install_handler( 1, [] ( registers_t * ) {

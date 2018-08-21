@@ -64,20 +64,50 @@ halt_message:
         .asciz  "Thingy halted"
         .comm   stack, STACK_SIZE /* the stack */
 
-.global __gdt_flush, __flush
-.extern gdt_ptr
+.global __gdt_flush, __flush, __tss_flush
 
 __gdt_flush:
-    lgdt [gdt_ptr]
-    mov %ax, 0x10
-    mov %ds, %ax
-    mov %es, %ax
-    mov %fs, %ax
-    mov %gs, %ax
-    mov %ss, %ax
-    jmp  $0x08, $(__flush)
+    movw        4(%esp), %ax
+    movw        %ax, 6(%esp)
+    lgdt        6(%esp)
+    mov $0x10, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+    mov %ax, %ss
+    ljmp  $0x08, $(__flush)
+
 __flush:
     ret
+
+__tss_flush:
+    mov $0x2B, %ax
+    ltr %ax
+    ret
+
+.global __jump_to_userland
+__jump_to_userland:
+    cli
+    mov $0x23, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+
+    mov %esp, %eax
+    mov 8(%esp), %ecx // user stack
+    mov 4(%esp), %edx // user code
+
+    push $0x23
+    push %eax
+    pushf
+    pop %eax
+    or $0x200, %eax
+    push %eax
+    push $0x1b
+    push %edx
+    iret
 
 .global  __idt_flush
 .extern idt_ptr
