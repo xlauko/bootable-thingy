@@ -39,11 +39,10 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     kernel::dt::init();
 
-    // TODO move after mem init
+    mem::init( info );
+
     init_devices( &ser, &kvga );
     init_pdclib( &ser );
-
-    mem::init( info );
 
     syscall::init();
 

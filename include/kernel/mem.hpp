@@ -110,6 +110,7 @@ namespace kernel::mem {
 
     struct allocator {
         void * alloc( size_t size, bool user = false );
+        void * realloc( void * ptr, size_t size, bool user = false );
         void free( void * ptr );
 
         struct alignas( 8 ) node {
@@ -120,6 +121,7 @@ namespace kernel::mem {
                 size_t size;
                 node * next;
                 bool free;
+                bool user;
                 uint32_t magic_end;
             };
 
@@ -149,7 +151,7 @@ namespace kernel::mem {
                 return __header.magic_begin == magic && __header.magic_end == magic;
             }
 
-            bool fit( size_t size ) { return size <= __header.size && __header.free; }
+            bool fit( size_t size, bool user );
 
             void * data() {
                 return reinterpret_cast< void * >(

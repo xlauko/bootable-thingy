@@ -324,7 +324,6 @@ namespace kernel::mem {
                 return free_pages;
             auto tab = get_table( addr );
             if ( !reinterpret_cast< page_entry * >( tab )->present ) {
-                // assume addr is page_table aligned
                 free_pages += page_table::size;
                 addr += page_table::size * page::size;
             } else {
@@ -360,19 +359,23 @@ namespace kernel::mem {
 
     allocator _allocator;
 
+    bool allocator::node::fit( size_t size, bool user ) {
+        return size <= __header.size && __header.free && __header.user == user;
+    }
+
     void * allocator::alloc( size_t size, bool user ) {
         if ( size == 0 )
             return nullptr;
 
         node * curr = freelist;
-        while ( curr && curr->check() && !curr->fit( size ) )
+        while ( curr && curr->check() && !curr->fit( size, user ) )
             curr = curr->next();
 
         constexpr size_t metadata_size = sizeof( node::metadata_header ) + sizeof( node::metadata_footer );
 
         if ( !curr ) {
             size_t alloc_pages = (size + metadata_size + paging::page::size - 1 ) / paging::page::size;
-            auto page = palloc.alloc( alloc_pages );
+            auto page = palloc.alloc( alloc_pages, user );
 
             size_t available_memory = alloc_pages * paging::page::size - metadata_size;
 
@@ -381,6 +384,7 @@ namespace kernel::mem {
             curr->header().size = available_memory;
             curr->header().next = freelist;
             curr->header().free = false;
+            curr->header().user = user;
             curr->header().magic_end = node::magic;
 
             curr->footer().magic_begin = node::magic;
@@ -407,6 +411,7 @@ namespace kernel::mem {
             next->header().size = free_space;
             next->header().next = curr->header().next;
             next->header().free = true;
+            next->header().user = curr->header().user;
             next->header().magic_end = node::magic;
 
             next->footer().size = available_memory;
@@ -415,6 +420,21 @@ namespace kernel::mem {
         }
 
         return curr->data();
+    }
+
+    void * allocator::realloc( void * ptr, size_t size, bool user ) {
+        auto node = reinterpret_cast< struct node * >(
+                    reinterpret_cast< uintptr_t >( ptr ) - sizeof ( node::metadata_header ) );
+
+        if ( size < node->header().size )
+            return ptr;
+
+        auto place = alloc( size, user );
+        memcpy( place, ptr, node->header().size );
+
+        free( ptr );
+
+        return place;
     }
 
     void allocator::free( void * ptr ) {

@@ -22,6 +22,10 @@ extern "C" void * malloc( size_t size ) noexcept {
     return kernel::mem::_allocator.alloc( size );
 }
 
+extern "C" void * realloc( void * ptr, size_t size ) noexcept {
+    return kernel::mem::_allocator.realloc( ptr, size );
+}
+
 static bool readf( _PDCLIB_fd_t self, void * buff, size_t length, size_t * numBytesRead ) {
     auto in = static_cast< kernel::dev::Serial * >( self.pointer );
     auto buf = reinterpret_cast< char * >( buff );
