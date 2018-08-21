@@ -358,57 +358,58 @@ namespace kernel::mem {
         return addr;
     }
 
-    allocator< kernel_allocator >::page_list kernel_page_list;
-    allocator< user_allocator >::page_list user_page_list;
+    allocator _allocator;
 
-    template< typename page_list >
-    typename page_list::node * get_page_node( page_list list, size_t size ) {
-        auto node = list.head;
-        while ( node ) {
-            if ( node->available > size )
-                return node;
+    void * allocator::alloc( size_t size, bool user ) {
+        if ( size == 0 )
+            return nullptr;
+
+        node * curr = freelist;
+        node * prev = nullptr;
+
+        while ( curr && curr->check() && !curr->fit( size ) ) {
+            prev = curr;
+            curr = curr->next();
         }
 
-        return nullptr;
-    }
+        if ( !curr ) {
+            auto page = palloc.alloc( ( size + sizeof( node::metadata_header ) + sizeof( node::metadata_footer )
+                                             + paging::page::size - 1 )
+                                      / paging::page::size );
 
-    template<>
-    void * allocator< kernel_allocator >::alloc( size_t size ) {
-        auto node = get_page_node( kernel_page_list, size );
+            curr = reinterpret_cast< node * >( virt_2_phys( page.addr ) );
+            curr->header().magic_begin = node::magic;
+            curr->header().size = size;
+            curr->header().next = nullptr;
+            curr->header().free = false;
+            curr->header().magic_end = node::magic;
 
-        if ( !node ) {
-            page_list::node new_node;
-            new_node.page = palloc.alloc( ( size ) / paging::page::size );
-            new_node.available = paging::page::size - sizeof( page_list::node );
-            new_node.continuous = ( size ) / paging::page::size;
+            curr->footer().magic_begin = node::magic;
+            curr->footer().size = size;
+            curr->footer().magic_end = node::magic;
 
-            auto addr = reinterpret_cast< page_list::node * >( virt_2_phys( new_node.page.addr ) );
-            *( addr ) = new_node;
-            node = addr;
-
-            if ( kernel_page_list.head )
-                node->next = kernel_page_list.head;
-            kernel_page_list.head = node;
+            if ( prev ) prev->header().next = curr;
         }
 
-        auto ret = reinterpret_cast< uintptr_t >( node ) + paging::page::size - node->available;
-        node->available -= size;
-        return reinterpret_cast< void * >( ret );
+        // TODO optimize spliting
+        /*if ( curr->fit( size + sizeof( node::metadata_header ) + sizeof( node::metadata_footer ) ) ) {
+            auto split = reinterpret_cast< uintptr_t >( curr ) + sizeof( node::metadata_header ) + size;
+
+            auto split_footer = reinterpret_cast< node::metadata_footer >
+
+            auto &footer = curr->footer();
+        }*/
+
+        return curr->data();
     }
 
-    template<>
-    void allocator< kernel_allocator >::free( void * ptr ) {
-//        return kernel_heap->free( ptr );
-    }
+    void allocator::free( void * ptr ) {
+        if ( ptr == nullptr ) return;
 
-    template<>
-    void * allocator< user_allocator >::alloc( size_t size ) {
-//        return user_heap->malloc( size );
-    }
+        auto curr = reinterpret_cast< node * >( (uintptr_t)ptr - sizeof( node::metadata_header ) );
+        curr->header().free = true;
 
-    template<>
-    void allocator< user_allocator >::free( void * ptr ) {
-//        return user_heap->free( ptr );
+        // TODO squash nodes
     }
 
     void init( const multiboot::info & info ) {
@@ -421,9 +422,6 @@ namespace kernel::mem {
             identity_map_page( paging::kernel_page_dir, i, i );
 
         page_allocator::init( &falloc );
-
-        kernel_page_list.head = nullptr;
-        user_page_list.head = nullptr;
 
         isrs::install_handler( 14, paging::page_fault_handler );
 

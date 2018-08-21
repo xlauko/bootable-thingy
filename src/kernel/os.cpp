@@ -45,6 +45,12 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     mem::init( info );
 
+    auto test = malloc( 10 );
+    printf( "addr: %p\n", test );
+    free( test );
+    test = malloc( 10 );
+    printf( "addr: %p\n", test );
+
     syscall::init();
 
     user::executable program;

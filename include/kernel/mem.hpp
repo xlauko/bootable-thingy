@@ -108,27 +108,61 @@ namespace kernel::mem {
 
     void * kmalloc_page_aligned( size_t size );
 
-    struct kernel_allocator {};
-    struct user_allocator {};
-
-    template< typename __tag >
     struct allocator {
-        using tag = __tag;
-
-        void * alloc( size_t size );
+        void * alloc( size_t size, bool user = false );
         void free( void * ptr );
 
-        struct page_list {
-            struct node {
+        struct alignas( 8 ) node {
+            static constexpr uint32_t magic = 0xDEADBEEF;
+
+            struct metadata_header {
+                uint32_t magic_begin;
+                size_t size;
                 node * next;
-                paging::page page;
-                size_t available;
-                size_t continuous;
+                bool free;
+                uint32_t magic_end;
             };
 
-            node * head;
+            struct metadata_footer {
+                uint32_t magic_begin;
+                size_t size;
+                uint32_t magic_end;
+            };
+
+            metadata_header __header;
+
+            metadata_header & header() { return __header; }
+
+            metadata_footer & footer() {
+                return *( reinterpret_cast< metadata_footer * >(
+                reinterpret_cast< uintptr_t >( this ) + sizeof( metadata_header ) +__header.size ) );
+            }
+
+            node * next() {
+                return reinterpret_cast< node * >(
+                       reinterpret_cast< uintptr_t >( this ) + sizeof( metadata_header )
+                                                             + sizeof( metadata_footer )
+                                                             + __header.size );
+            }
+
+            bool check() {
+                return __header.magic_begin == magic && __header.magic_end == magic;
+            }
+
+            bool fit( size_t size ) { return size <= __header.size && __header.free; }
+
+            void * data() {
+                return reinterpret_cast< void * >(
+                    reinterpret_cast< uintptr_t >( this ) + sizeof( metadata_header )
+                );
+            }
+
         };
+
+        node * freelist = nullptr;
     };
+
+    extern allocator _allocator;
 
     void init( const multiboot::info & info );
 
