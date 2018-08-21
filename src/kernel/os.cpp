@@ -48,6 +48,7 @@ void Thingy::start( unsigned long magic, unsigned long addr ) noexcept {
 
     user::executable program;
 
+    *( (int *)0xffasdas ) = 10;
     /*info.yield( multiboot::information_type::module, [&program] ( const auto & item ) {
         using namespace mem::paging;
 
