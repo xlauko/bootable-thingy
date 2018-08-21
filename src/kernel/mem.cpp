@@ -365,40 +365,54 @@ namespace kernel::mem {
             return nullptr;
 
         node * curr = freelist;
-        node * prev = nullptr;
-
-        while ( curr && curr->check() && !curr->fit( size ) ) {
-            prev = curr;
+        while ( curr && curr->check() && !curr->fit( size ) )
             curr = curr->next();
-        }
+
+        constexpr size_t metadata_size = sizeof( node::metadata_header ) + sizeof( node::metadata_footer );
 
         if ( !curr ) {
-            auto page = palloc.alloc( ( size + sizeof( node::metadata_header ) + sizeof( node::metadata_footer )
-                                             + paging::page::size - 1 )
-                                      / paging::page::size );
+            size_t alloc_pages = (size + metadata_size + paging::page::size - 1 ) / paging::page::size;
+            auto page = palloc.alloc( alloc_pages );
+
+            size_t available_memory = alloc_pages * paging::page::size - metadata_size;
 
             curr = reinterpret_cast< node * >( virt_2_phys( page.addr ) );
             curr->header().magic_begin = node::magic;
-            curr->header().size = size;
-            curr->header().next = nullptr;
+            curr->header().size = available_memory;
+            curr->header().next = freelist;
             curr->header().free = false;
             curr->header().magic_end = node::magic;
 
             curr->footer().magic_begin = node::magic;
-            curr->footer().size = size;
+            curr->footer().size = available_memory;
             curr->footer().magic_end = node::magic;
-
-            if ( prev ) prev->header().next = curr;
+            freelist = curr;
         }
 
-        // TODO optimize spliting
-        /*if ( curr->fit( size + sizeof( node::metadata_header ) + sizeof( node::metadata_footer ) ) ) {
-            auto split = reinterpret_cast< uintptr_t >( curr ) + sizeof( node::metadata_header ) + size;
+        size_t available_memory = curr->header().size;
+        if ( available_memory > size + metadata_size + 8 ) {
+            size_t free_space = available_memory - metadata_size - size;
 
-            auto split_footer = reinterpret_cast< node::metadata_footer >
+            curr->header().size = size;
 
             auto &footer = curr->footer();
-        }*/
+            footer.magic_begin = node::magic;
+            footer.size = size;
+            footer.magic_end = node::magic;
+
+            node * next = reinterpret_cast< node * >(
+                          reinterpret_cast< uintptr_t >( &curr->footer() ) + sizeof( node::metadata_footer ) );
+
+            next->header().magic_begin = node::magic;
+            next->header().size = free_space;
+            next->header().next = curr->header().next;
+            next->header().free = true;
+            next->header().magic_end = node::magic;
+
+            next->footer().size = available_memory;
+
+            curr->header().next = next;
+        }
 
         return curr->data();
     }
@@ -408,8 +422,6 @@ namespace kernel::mem {
 
         auto curr = reinterpret_cast< node * >( (uintptr_t)ptr - sizeof( node::metadata_header ) );
         curr->header().free = true;
-
-        // TODO squash nodes
     }
 
     void init( const multiboot::info & info ) {
